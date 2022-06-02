@@ -1,6 +1,7 @@
 import Block
 
-class ConcensusAlgorithm:
+
+class ConsensusAlgorithm:
     def mine(self, block: Block):
         """Mine a block"""
         pass

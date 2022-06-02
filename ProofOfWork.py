@@ -1,5 +1,6 @@
-import ConcensusAlgorithm
+import ConsensusAlgorithm
 
-class ProofOfWork(ConcensusAlgorithm):
+
+class ProofOfWork(ConsensusAlgorithm):
     def __init__(self, blockDifficulty):
         self.blockDifficulty = blockDifficulty
