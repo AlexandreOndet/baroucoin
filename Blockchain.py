@@ -1,5 +1,5 @@
 import time
-import Block
+import Block, ProofOfWork, TransactionStore
 
 class Blockchain: 
     def __init__(self):
@@ -8,7 +8,7 @@ class Blockchain:
         self.createGenesisBlock()
 
     def createGenesisBlock(self):
-        genesisBlock = Block(time.time(),[],0,"PoW", "0","0",100)# for now concensus alg is a string because it's not implemented yet
+        genesisBlock = Block(time.time(),TransactionStore(),0,ProofOfWork(1), "0","0",100)# for now concensus alg is a string because it's not implemented yet
         genesisBlock.hash = genesisBlock.getHash()
         self.blockChain.append(genesisBlock)
 

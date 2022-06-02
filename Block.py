@@ -1,8 +1,9 @@
 import hashlib as h
 from json import dumps
+import ConcensusAlgorithm, TransactionStore
 
 class Block:
-    def __init__(self, timestamp, transactionStore, height, concensusAlgorithm, previousHash, miner, reward, nonce=0):
+    def __init__(self, timestamp, transactionStore:TransactionStore, height, concensusAlgorithm:ConcensusAlgorithm, previousHash, miner, reward, nonce=0):
         self.timestamp=timestamp
         self.transactionStore=transactionStore
         self.height=height #height in the blockchain, each new blocks increments it
