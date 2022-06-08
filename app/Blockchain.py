@@ -1,6 +1,6 @@
 import time
 
-from app.Block import *
+from Block import *
 from ProofOfWork import *
 from TransactionStore import *
 
