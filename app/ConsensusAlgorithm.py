@@ -1,4 +1,4 @@
-import Block
+from app import Block
 
 
 class ConsensusAlgorithm:

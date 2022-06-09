@@ -1,6 +1,6 @@
 import time
 
-from Block import *
+from app.Block import *
 from ProofOfWork import *
 from TransactionStore import *
 
@@ -12,7 +12,7 @@ class Blockchain:
         self.createGenesisBlock()
 
     def createGenesisBlock(self):
-        genesisBlock = Block(time.time(), TransactionStore(), 0, ProofOfWork(1), "0", "0",100)
+        genesisBlock = Block(time.time(), TransactionStore(), 0, ProofOfWork(1), "0", "0", 100)
         # for now consensus
         # alg is a string because it's not implemented yet
         genesisBlock.hash = genesisBlock.getHash()
