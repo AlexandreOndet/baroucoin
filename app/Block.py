@@ -1,17 +1,17 @@
 import hashlib as h
 from json import dumps
+from xmlrpc.client import Boolean
 
-import ConsensusAlgorithm
 import TransactionStore
 
 
 class Block:
-    def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: ConsensusAlgorithm,
+    def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: Boolean,
                  previousHash, miner, reward, nonce=0):
         self.timestamp = timestamp
         self.transactionStore = transactionStore
         self.height = height  # height in the blockchain, each new blocks increments it
-        self.consensusAlgorithm = consensusAlgorithm
+        self.consensusAlgorithm = consensusAlgorithm # False = Proof of work, True = Proof of stake
         self.previousHash = previousHash
         self.miner = miner
         self.reward = reward
