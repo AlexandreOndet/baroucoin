@@ -20,3 +20,7 @@ class Block:
     def getHash(self):
         block = dumps(self.__dict__, sort_keys=True)
         return h.sha3_256(block.encode()).hexdigest()
+
+    def __str__(self):
+        return dumps(self.__dict__, sort_keys=True)
+
