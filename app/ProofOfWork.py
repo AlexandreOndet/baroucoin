@@ -9,8 +9,7 @@ class ProofOfWork(ConsensusAlgorithm, dict):
     def mine(self, block):
         isCorrect = False
         while not isCorrect:
-            print(block.getHash())
-            if str(block.getHash())[0:self.blockDifficulty] == [0] * self.blockDifficulty:
+            if block.getHash()[0:self.blockDifficulty] == '0' * self.blockDifficulty:
                 isCorrect = True
-                break
+                return block.nonce
             block.nonce = block.nonce + 1
