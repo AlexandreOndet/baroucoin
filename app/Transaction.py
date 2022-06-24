@@ -8,6 +8,9 @@ class Transaction:
         total_out = 0
         for i in receivers:
             total_out += i[1]
-        if total_in >= total_out:
+        if total_out > total_in:
             raise ValueError("Sum of amount in must be >= Sum of amount out")
         self.receivers = []
+
+    def __repr__(self):
+        return f"in:{self.senders}, out:{self.receivers}"
