@@ -50,11 +50,11 @@ class FullNode(object):
     '''
     def validateNewBlock(self, newBlock: Block) -> bool:
         if (newBlock.getHash()[0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
-            or newBlock.timestamp - time.time() > 3600 # Prevent block from being to much in the future
+            or newBlock.timestamp - time.time() > 3600 # Prevent block from being too much in the future (1h max)
             or newBlock.reward != self.computeReward()):
             return False
 
-        return all([validateTransaction(t) for t in newBlock.transactionStore.transactions]) # Validate each transaction
+        return all([self.validateTransaction(t) for t in newBlock.transactionStore.transactions]) # Validate each transaction
             
 
 # node = FullNode(None, Wallet("test"))

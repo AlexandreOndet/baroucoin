@@ -8,15 +8,20 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [ ] Sérialisation des messages en JSON
 ### Échanges d'informations entres les full nodes
 - [ ] État de la blockchain
-- [ ] Difficulté du bloc courant
-- [ ] Nouvelles transactions
 - [ ] Nouveau bloc trouvé
+- [ ] Nouvelles transactions
+- [ ] Difficulté du bloc courant
 ### 'ProofOfWork'
 - [x] Implémentation du minage des blocs
-- [ ] Gestion de la difficulté
 - [x] Vérification du bloc miné
+- [ ] Redéfinir la structure d'une transaction : hash, frais
 - [ ] Vérification des transactions
+- [ ] Gestion de la difficulté
 - [ ] Calcul de la récompense de bloc
+### Amélioration du code
+- [ ] Remplacer le booléen 'consensusAlgorithm' pour être plus explicite (énumération ?)
+- [ ] Documentation des classes
+- [ ] Documentation des fonctions
 
 # Lancement du serveur
 Pour initialiser le serveur (jouant un rôle de DNS central pour simplifier la découvertes des noeuds du réseau), nous utilisons Docker.
