@@ -1,0 +1,5 @@
+fastapi>=0.78.0
+pydantic>=1.8.0
+uvicorn>=0.15.0
+cryptography>=37.0.2
+base58>=2.1.1
