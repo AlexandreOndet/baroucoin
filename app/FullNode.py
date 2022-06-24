@@ -36,5 +36,26 @@ class FullNode(object):
     def mineNewBlock(self):
         self.consensusAlgorithm.mine(self.createNewBlock())
 
+    '''
+        See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference
+    '''
+    def validateTransaction(self, t: Transaction) -> bool:
+        return (any(t.senders) 
+        and any(t.receivers) 
+        and len(t.senders) == len(set(t.senders)) # Check for duplicate inputs
+        )
+
+    '''
+        See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#validating-a-new-block for reference
+    '''
+    def validateNewBlock(self, newBlock: Block) -> bool:
+        if (newBlock.getHash()[0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
+            or newBlock.timestamp - time.time() > 3600 # Prevent block from being to much in the future
+            or newBlock.reward != self.computeReward()):
+            return False
+
+        return all([validateTransaction(t) for t in newBlock.transactionStore.transactions]) # Validate each transaction
+            
+
 # node = FullNode(None, Wallet("test"))
 # print(vars(node.createNewBlock()))
