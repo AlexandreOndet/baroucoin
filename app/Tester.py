@@ -106,7 +106,7 @@ class PoWTests(unittest.TestCase):
 
     def init_node_with_transaction(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
-        t = Transaction(senders=[(Wallet("first").address, 1)], receivers=[(Wallet("first").address, 1)])
+        t = Transaction(senders=[(Wallet("beforefirst").address, 1)], receivers=[(Wallet("first").address, 1)])
         b = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
                   consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
                   nonce=0)

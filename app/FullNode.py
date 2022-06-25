@@ -51,11 +51,18 @@ class FullNode(object):
 
         for i in t.senders:
             exists = False
+            spent = False
+            print(t)
             for j in self.blockchain.blockChain:
+                print(j.transactionStore)
                 for k in j.transactionStore.transactions:
                     if i in k.receivers:
                         exists = True
-            if not exists:
+                    if i in k.senders:
+                        print(k)
+                        spent = True
+            if not exists or spent:
+                print(f"exists={exists} et spent={spent}")
                 return False
 
         return True  # Check for duplicate inputs

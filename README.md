@@ -15,7 +15,7 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [x] Implémentation du minage des blocs
 - [x] Vérification du bloc miné
 - [ ] Redéfinir la structure d'une transaction : hash, frais
-- [ ] Vérification des transactions
+- [X] Vérification des transactions
 - [ ] Gestion de la difficulté
 - [ ] Calcul de la récompense de bloc
 ### Amélioration du code
