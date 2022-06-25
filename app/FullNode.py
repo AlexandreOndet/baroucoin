@@ -28,7 +28,7 @@ class FullNode(object):
             timestamp=time.time(),
             transactionStore=TransactionStore(self.transaction_pool),
             height=previous_block.height + 1,
-            consensusAlgorithm=self.consensusAlgorithm,
+            consensusAlgorithm=False,
             previousHash=previous_block.getHash(),
             miner=self.wallet.address,
             reward=self.computeReward())
