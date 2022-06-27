@@ -6,6 +6,7 @@ from Wallet import *
 from Transaction import *
 from TransactionStore import *
 from ConsensusAlgorithm import *
+import hashlib as h
 
 class FullNode(object):
     """docstring for FullNode"""
@@ -35,6 +36,9 @@ class FullNode(object):
 
     def mineNewBlock(self):
         self.consensusAlgorithm.mine(self.createNewBlock())
+
+    def getLastBlockHash(self):
+        return h.sha3_256(self.blockchain.lastBlock).hexdigest()
 
 # node = FullNode(None, Wallet("test"))
 # print(vars(node.createNewBlock()))

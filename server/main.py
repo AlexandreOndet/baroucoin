@@ -3,9 +3,16 @@ import os
 from fastapi import FastAPI, Request
 import json
 import time
+import requests
 
 blockchain = FastAPI()
 PEERS_JSON_PATH = os.getcwd() + "/peers.json"
+
+
+def get_public_ip():
+    return requests.get('https://api.ipify.org').text
+
+
 
 
 @blockchain.get("/test")
@@ -50,7 +57,7 @@ async def new_peer(request: Request) -> dict:
     Adds a new peer to the blockchain network
     :return: dict -> keys: new_peer:str -> IP Address
     """
-    server_address = "?whatsmyip?"
+    server_address = get_public_ip()
     peer_host = request.client.host
     peer_port = request.client.port
     if peer_host == "127.0.0.1":
