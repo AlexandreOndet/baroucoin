@@ -4,8 +4,10 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import *
 
+
 class Wallet(object):
     """docstring for Wallet"""
+
     def __init__(self, seed: str, display_name=""):
         super(Wallet, self).__init__()
         self.display_name = display_name
@@ -17,30 +19,32 @@ class Wallet(object):
         salt = b''
         kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=200_000)
         dk = kdf.derive(seed)
-        return ec.derive_private_key(int.from_bytes(dk, "big"), ec.SECP256K1()) # An EllipticCurvePrivateKey object (see https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ec/#cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey)
+        return ec.derive_private_key(int.from_bytes(dk, "big"),
+                                     ec.SECP256K1())  # An EllipticCurvePrivateKey object (see https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ec/#cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey)
 
-    def generate_address(self) -> bytes: # Address is a base58 encoded hash derived from the public key
+    def generate_address(self) -> bytes:  # Address is a base58 encoded hash derived from the public key
         digest = hashes.Hash(hashes.SHA256())
         digest.update(self.secret_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption()))
         return base58.b58encode(digest.finalize())
 
     def addToBalance(self, amount: int):
-        if (amount <= 0):
+        if amount <= 0:
             raise ValueError("Amount cannot be negative or zero")
         self.balance += amount
 
     def removeFromBalance(self, amount: int):
-        if (amount <= 0):
+        if amount <= 0:
             raise ValueError("Amount cannot be negative or zero")
-        if (self.balance - amount < 0):
+        if self.balance - amount < 0:
             raise ValueError("Balance cannot be negative")
         self.balance -= amount
-        
+
     def show_private_key(self):
         print(self.secret_key.private_bytes(Encoding.PEM, PrivateFormat.PKCS8, NoEncryption()).decode('utf-8'))
 
     def show_public_key(self):
-        print(self.secret_key.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo).decode('utf-8'))
+        print(
+            self.secret_key.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo).decode('utf-8'))
 
     def show_info(self):
         if self.display_name:

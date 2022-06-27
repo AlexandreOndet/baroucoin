@@ -8,3 +8,6 @@ class TransactionStore(dict):
 
     def addTransaction(self, transaction: Transaction):
         self.transactions.append(transaction)
+
+    def __str__(self):
+        return str(self.transactions)

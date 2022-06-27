@@ -6,7 +6,6 @@ from TransactionStore import *
 
 class Blockchain:
     def __init__(self):
-        self.unconfirmedTransactions = []
         self.blockChain = []
 
     def createGenesisBlock(self):

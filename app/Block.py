@@ -11,7 +11,7 @@ class Block:
         self.timestamp = timestamp
         self.transactionStore = transactionStore
         self.height = height  # height in the blockchain, each new blocks increments it
-        self.consensusAlgorithm = consensusAlgorithm # False = Proof of work, True = Proof of stake
+        self.consensusAlgorithm = consensusAlgorithm  # False = Proof of work, True = Proof of stake
         self.previousHash = previousHash
         self.miner = miner
         self.reward = reward
@@ -23,4 +23,3 @@ class Block:
 
     def __str__(self):
         return dumps(self.__dict__, sort_keys=True)
-
