@@ -13,19 +13,23 @@ from TransactionStore import *
 from Wallet import *
 
 '''
-    See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference
+    See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
+    Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
 '''
 class FullNode(socketserver.ThreadingTCPServer):
     """docstring for FullNode"""
     daemon_threads = True # Stops server from blocking on abrupt shutdown
 
-    def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet, server_address: Tuple[str, int], RequestHandlerClass: socketserver.BaseRequestHandler):
+    def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet, server_address: Tuple[str, int] = ('localhost', 13337), RequestHandlerClass: socketserver.BaseRequestHandler = TCPHandler):
         socketserver.ThreadingTCPServer.__init__(self, server_address, RequestHandlerClass) # Initialize the TCP server for handling peer requests
         self.wallet = existing_wallet
         self.consensusAlgorithm = ProofOfWork(1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
         self.transaction_pool = []
         self.client = TCPClient() # Create the TCPClient to interact with other peers
         self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
+
+    def __del__(self):
+        self.server_close()
 
     def addToTransactionPool(self, t: Transaction):
         self.transaction_pool.append(t)
@@ -44,8 +48,11 @@ class FullNode(socketserver.ThreadingTCPServer):
     def computeReward(self) -> int:
         return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
-    def mineNewBlock(self):
-        self.consensusAlgorithm.mine(self.createNewBlock())
+    def mineNewBlock(self): # TODO : rework to be able to interrupt mining once a valid block has been received for the same height 
+        new_block = self.createNewBlock()
+        self.consensusAlgorithm.mine(new_block)
+        self.blockchain.addBlock(new_block)
+        self.client.broadcast({'newBlock': new_block.toJSON()})
 
     '''
         See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference

@@ -15,8 +15,10 @@ class Block:
         self.nonce = nonce
 
     def getHash(self):
-        block = dumps(self.__dict__, sort_keys=True)
-        return h.sha3_256(block.encode()).hexdigest()
+        return h.sha3_256(self.toJSON().encode()).hexdigest()
+
+    def toJSON(self):
+        return dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
     def __str__(self):
         return dumps(self.__dict__, sort_keys=True)

@@ -13,28 +13,30 @@ class TCPClient(object):
         try:
             sock.connect(peer)
             self.peers[peer] = sock
-        except:
-            print("Error connect")
-            return False # TODO : Handle exception
+        except Exception as e:
+            print("Error connect: ", e)
+            return False # TODO : Handle connect exception
 
         return True
 
-    def disconnect(self, peer: Tuple[str, int]) -> bool:
+    def disconnect(self, peer: Tuple[str, int], clear=False) -> bool:
         try:
             self.peers[peer].close()
-        except:
-            print("Error disconnect")
-            return False # TODO : Handle exception
+        except Exception as e:
+            print("Error disconnect: ", e)
+            return False # TODO : Handle close exception
 
+        if clear:
+            del self.peers[peer]
         return True
 
     def broadcast(self, data): # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
         for (peer, sock) in self.peers.items():
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
-            except:
-                print("Error send")
-                pass # TODO : Handle exception 
+            except Exception as e:
+                print("Error send: ", e)
+                pass # TODO : Handle send exception
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 13337

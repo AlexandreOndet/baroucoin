@@ -4,8 +4,8 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 # TODO
 ### Communication entre les full nodes
 - [ ] Récupération des informations avec l'API du serveur
-- [ ] Connexions TCP entre les noeuds
-- [ ] Sérialisation des messages en JSON
+- [x] Connexions TCP entre les noeuds
+- [x] Sérialisation des messages en JSON
 ### Échanges d'informations entres les full nodes
 - [ ] État de la blockchain
 - [ ] Nouveau bloc trouvé
@@ -16,7 +16,7 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [x] Vérification du bloc miné
 - [ ] Redéfinir la structure d'une transaction : hash, frais
 - [X] Vérification des transactions
-- [ ] Gestion de la difficulté
+- [ ] Actualisation autonome de la difficulté par les pairs
 - [ ] Calcul de la récompense de bloc
 ### Amélioration du code
 - [ ] Remplacer le booléen 'consensusAlgorithm' pour être plus explicite (énumération ?)

@@ -17,3 +17,6 @@ class Blockchain:
     @property
     def lastBlock(self):
         return self.blockChain[-1]
+
+    def addBlock(self, block: Block):
+        self.blockChain.append(block)
