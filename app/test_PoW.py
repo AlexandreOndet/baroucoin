@@ -22,8 +22,7 @@ class PoWTests(unittest.TestCase):
                       consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
                       nonce=0)
 
-        while block.getHash()[
-            0] == '0':  # Generate a block with hash not validating any Proof of Work (no zeroes at start)
+        while block.getHash()[0] == '0':  # Generate a block with hash not validating any Proof of Work (no zeroes at start)
             block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
                           consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0,
                           reward=node.computeReward(), nonce=0)
@@ -112,7 +111,7 @@ class PoWTests(unittest.TestCase):
                   nonce=0)
         b.transactionStore.addTransaction(t)
         node.consensusAlgorithm.mine(b)
-        node.blockchain.blockChain.append(b)  # set up a transaction to have a valid output later
+        node.blockchain.addBlock(b)  # set up a transaction to have a valid output later
         return node
 
 if __name__ == '__main__':
