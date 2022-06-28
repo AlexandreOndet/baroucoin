@@ -1,12 +1,9 @@
+import TransactionStore
 import hashlib as h
 from json import dumps
-from xmlrpc.client import Boolean
-
-import TransactionStore
-
 
 class Block:
-    def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: Boolean,
+    def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: bool,
                  previousHash, miner, reward, nonce=0):
         self.timestamp = timestamp
         self.transactionStore = transactionStore

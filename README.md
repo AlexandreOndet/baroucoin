@@ -4,7 +4,7 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 # TODO
 ### Communication entre les full nodes
 - [ ] Récupération des informations avec l'API du serveur
-- [ ] Connection TCP entre les noeuds
+- [ ] Connexions TCP entre les noeuds
 - [ ] Sérialisation des messages en JSON
 ### Échanges d'informations entres les full nodes
 - [ ] État de la blockchain

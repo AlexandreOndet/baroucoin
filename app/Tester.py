@@ -94,15 +94,15 @@ class PoWTests(unittest.TestCase):
 
     def test_transaction_validation(self):
         node = self.init_node_with_transaction()
-        self.assertFalse(node.validateTransaction(Transaction(senders=[], receivers=[])))
-        self.assertFalse(node.validateTransaction(Transaction(senders=[(Wallet("first").address, 1)], receivers=[])))
+        self.assertFalse(node.validateTransaction(Transaction(senders=[], receivers=[])), "Empty transactions gets validated")
+        self.assertFalse(node.validateTransaction(Transaction(senders=[(Wallet("first").address, 1)], receivers=[])), "Empty receivers gets validated")
         # self.assertFalse(node.validateTransaction(Transaction(senders=[], receivers=[(Wallet("second").address, 1)]))) not possible as it raises ValueError in the current implementation
         self.assertFalse(node.validateTransaction(
             Transaction(senders=[(Wallet("first").address, 1), (Wallet("first").address, 1)],
-                        receivers=[(Wallet("second").address, 1)])))
+                        receivers=[(Wallet("second").address, 1)])), "Duplicated senders gets validated")
 
         self.assertTrue(node.validateTransaction(
-            Transaction(senders=[(Wallet("first").address, 1)], receivers=[(Wallet("second").address, 1)])))
+            Transaction(senders=[(Wallet("first").address, 1)], receivers=[(Wallet("second").address, 1)])), "Correct transaction gets invalidated")
 
     def init_node_with_transaction(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
@@ -111,9 +111,9 @@ class PoWTests(unittest.TestCase):
                   consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
                   nonce=0)
         b.transactionStore.addTransaction(t)
+        node.consensusAlgorithm.mine(b)
         node.blockchain.blockChain.append(b)  # set up a transaction to have a valid output later
         return node
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
