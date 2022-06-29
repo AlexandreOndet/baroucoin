@@ -25,7 +25,7 @@ class Wallet(object):
     def generate_address(self) -> bytes:  # Address is a base58 encoded hash derived from the public key
         digest = hashes.Hash(hashes.SHA256())
         digest.update(self.secret_key.private_bytes(Encoding.DER, PrivateFormat.PKCS8, NoEncryption()))
-        return base58.b58encode(digest.finalize())
+        return base58.b58encode(digest.finalize()).decode('utf-8') # Store address as string
 
     def addToBalance(self, amount: int):
         if amount <= 0:

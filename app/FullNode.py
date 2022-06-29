@@ -1,23 +1,36 @@
 import time
+import socketserver
+import sys
+from typing import Tuple
 
 from Block import *
 from Blockchain import *
-from Wallet import *
+from ProofOfWork import *
+from TCPClient import *
+from TCPHandler import *
 from Transaction import *
 from TransactionStore import *
-from ProofOfWork import *
-import hashlib as h
+from Wallet import *
 
-class FullNode(object):
+
+'''
+    See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
+    Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
+'''
+class FullNode(socketserver.ThreadingTCPServer):
     """docstring for FullNode"""
+    daemon_threads = True # Stops server from blocking on abrupt shutdown
 
-    def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet):
-        super(FullNode, self).__init__()
+    def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet, server_address: Tuple[str, int] = ('localhost', 13337), RequestHandlerClass: socketserver.BaseRequestHandler = TCPHandler):
+        socketserver.ThreadingTCPServer.__init__(self, server_address, RequestHandlerClass) # Initialize the TCP server for handling peer requests
         self.wallet = existing_wallet
-        self.consensusAlgorithm = ProofOfWork(
-            1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
+        self.consensusAlgorithm = ProofOfWork(1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
         self.transaction_pool = []
-        self.blockchain = Blockchain()  # Should the FullNode class search for existing blockchain or should the constructor of Blockchain do it ?
+        self.client = TCPClient() # Create the TCPClient to interact with other peers
+        self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
+
+    def __del__(self):
+        self.server_close()
 
     def addToTransactionPool(self, t: Transaction):
         self.transaction_pool.append(t)
@@ -34,10 +47,13 @@ class FullNode(object):
             reward=self.computeReward())
 
     def computeReward(self) -> int:
-        return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?*
+        return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
-    def mineNewBlock(self):
-        self.consensusAlgorithm.mine(self.createNewBlock())
+    def mineNewBlock(self): # TODO : rework to be able to interrupt mining once a valid block has been received for the same height 
+        new_block = self.createNewBlock()
+        self.consensusAlgorithm.mine(new_block)
+        self.blockchain.addBlock(new_block)
+        self.client.broadcast({'newBlock': new_block.toJSON()})
 
     '''
         See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference
@@ -46,26 +62,22 @@ class FullNode(object):
     def validateTransaction(self, t: Transaction) -> bool:
         if not (any(t.senders)
                 and any(t.receivers)
-                and len(t.senders) == len(set(t.senders))):
+                and len(t.senders) == len(set(t.senders))): # Check for duplicate inputs
             return False
 
-        for i in t.senders:
+        for (addr, amount) in t.senders:
             exists = False
             spent = False
-            print(t)
-            for j in self.blockchain.blockChain:
-                print(j.transactionStore)
-                for k in j.transactionStore.transactions:
-                    if i in k.receivers:
+            for block in self.blockchain.blockChain:
+                for k in block.transactionStore.transactions:
+                    if addr in [r_addr for (r_addr, _) in k.receivers]:
                         exists = True
-                    if i in k.senders:
-                        print(k)
+                    if addr in [s_addr for (s_addr, _) in k.senders]:
                         spent = True
             if not exists or spent:
-                print(f"exists={exists} et spent={spent}")
                 return False
 
-        return True  # Check for duplicate inputs
+        return True
 
     '''
         See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#validating-a-new-block for reference
@@ -81,8 +93,10 @@ class FullNode(object):
         return all(
             [self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
 
-    def getLastBlockHash(self):
-        return h.sha3_256(self.blockchain.lastBlock).hexdigest()
-
-# node = FullNode(None, Wallet("test"))
-# print(vars(node.createNewBlock()))
+if __name__ == '__main__':
+    host, port = ("localhost", 13337) 
+    node = FullNode(False, Wallet("test"), (host, port), TCPHandler)
+    try:
+        node.serve_forever()
+    except KeyboardInterrupt:
+        sys.exit(0)

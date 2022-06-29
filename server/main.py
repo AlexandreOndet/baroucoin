@@ -69,7 +69,7 @@ async def new_peer(request: Request) -> dict:
         data = json.loads(f.read())
     if address in data:
         return {"Following address is already registered as a node": address}
-    data[address] = {time.asctime()}
+    data[peer_host] = peer_port
     with open(PEERS_JSON_PATH, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     return {"registeredFrom": address, "peers": data}
