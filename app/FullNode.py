@@ -20,13 +20,14 @@ from Wallet import *
 class FullNode(socketserver.ThreadingTCPServer):
     """docstring for FullNode"""
     daemon_threads = True # Stops server from blocking on abrupt shutdown
+    allow_reuse_address = True
 
     def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet, server_address: Tuple[str, int] = ('localhost', 13337), RequestHandlerClass: socketserver.BaseRequestHandler = TCPHandler):
         socketserver.ThreadingTCPServer.__init__(self, server_address, RequestHandlerClass) # Initialize the TCP server for handling peer requests
         self.wallet = existing_wallet
         self.consensusAlgorithm = ProofOfWork(1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
         self.transaction_pool = []
-        self.client = TCPClient() # Create the TCPClient to interact with other peers
+        self.client = TCPClient(server_addr=server_address) # Create the TCPClient to interact with other peers
         self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
 
     def __del__(self):
@@ -53,7 +54,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         new_block = self.createNewBlock()
         self.consensusAlgorithm.mine(new_block)
         self.blockchain.addBlock(new_block)
-        self.client.broadcast({'newBlock': new_block.toJSON()})
+        self.client.broadcast({"newBlock": new_block.toJSON()})
 
     '''
         See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference
@@ -84,19 +85,11 @@ class FullNode(socketserver.ThreadingTCPServer):
     '''
 
     def validateNewBlock(self, newBlock: Block) -> bool:
-        if (newBlock.getHash()[
-            0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
-                or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
-                or newBlock.reward != self.computeReward()):
+        if (newBlock.height <= self.blockchain.lastBlock.height
+            or newBlock.getHash()[0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
+            or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
+            or newBlock.reward != self.computeReward()):
             return False
 
         return all(
             [self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
-
-if __name__ == '__main__':
-    host, port = ("localhost", 13337) 
-    node = FullNode(False, Wallet("test"), (host, port), TCPHandler)
-    try:
-        node.serve_forever()
-    except KeyboardInterrupt:
-        sys.exit(0)

@@ -18,7 +18,7 @@ class Block:
         return h.sha3_256(self.toJSON().encode()).hexdigest()
 
     def toJSON(self):
-        return dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+        return dumps(self, default=lambda o: o.__dict__, sort_keys=True)
 
     def __str__(self):
         return dumps(self.__dict__, sort_keys=True)

@@ -9,7 +9,7 @@ class NetworkTests(unittest.TestCase):
         self.data = {'success': True}
 
     def test_tcpclient_connection(self):
-        client = TCPClient()
+        client = TCPClient(server_addr=self.server_node.server_address)
         self.assertTrue(client.connect(self.server_node.server_address), "Client could not connect")
 
         client.broadcast(self.data) # Sends message
