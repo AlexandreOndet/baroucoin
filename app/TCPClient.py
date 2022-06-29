@@ -6,8 +6,8 @@ import os
 
 from utils import get_public_ip
 
-PEERS_JSON_PATH = os.getenv["PEERS_JSON_PATH"]
-DNS_SERVER_IP = os.getenv["DNS_SERVER_IP"]
+PEERS_JSON_PATH = os.getenv("PEERS_JSON_PATH")
+DNS_SERVER_IP = os.getenv("DNS_SERVER_IP")
 
 
 class TCPClient(object):
@@ -16,7 +16,7 @@ class TCPClient(object):
     def __init__(self, server_addr):
         super(TCPClient, self).__init__()
         self.peers = {}  # Key : (HOST, PORT) / Value : socket representing the peer connection
-        self.register_to_dns_and_fetch_peers()
+        # self.register_to_dns_and_fetch_peers()
         self.server_addr=server_addr
 
     def register_to_dns_and_fetch_peers(self):
