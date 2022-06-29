@@ -8,18 +8,18 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [x] Sérialisation des messages en JSON
 ### Échanges d'informations entres les full nodes
 - [ ] État de la blockchain
-- [ ] Nouveau bloc trouvé
+- [x] Nouveau bloc trouvé
 - [ ] Nouvelles transactions
 - [ ] Difficulté du bloc courant
 ### 'ProofOfWork'
 - [x] Implémentation du minage des blocs
 - [x] Vérification du bloc miné
-- [ ] Redéfinir la structure d'une transaction : hash, frais
 - [X] Vérification des transactions
 - [ ] Actualisation autonome de la difficulté par les pairs
 - [ ] Calcul de la récompense de bloc
 ### Amélioration du code
 - [ ] Remplacer le booléen 'consensusAlgorithm' pour être plus explicite (énumération ?)
+- [ ] Documentation des tests
 - [ ] Documentation des classes
 - [ ] Documentation des fonctions
 

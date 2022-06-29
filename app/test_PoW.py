@@ -72,7 +72,7 @@ class PoWTests(unittest.TestCase):
 
     def test_block_validation_transactions(self):
         node = self.init_node_with_transaction()
-        block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
+        block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
                       consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
                       nonce=0)
 
