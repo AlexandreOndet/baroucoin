@@ -1,13 +1,37 @@
 import socket
 import json
 from typing import Tuple
+import requests
+import os
+
+from utils import get_public_ip
+
+PEERS_JSON_PATH = os.environ["PEERS_JSON_PATH"]
+DNS_SERVER_IP = os.environ["DNS_SERVER_IP"]
+
 
 class TCPClient(object):
     """docstring for TCPClient"""
+
     def __init__(self, server_addr):
         super(TCPClient, self).__init__()
-        self.peers = {} # Key : (HOST, PORT) / Value : socket reprensenting the peer connection
-        self.server_addr = server_addr
+        self.peers = {}  # Key : (HOST, PORT) / Value : socket representing the peer connection
+        self.register_to_dns_and_fetch_peers()
+        self.server_addr=server_addr
+
+    def register_to_dns_and_fetch_peers(self):
+        """
+        Register this client as a full node on DNS and get all peers registered to join the network
+        """
+        # Starts by asking a DNS server for peers list
+        peers_response = requests.get(DNS_SERVER_IP + "/peers")
+        print(peers_response)
+        myIp = get_public_ip()
+        if peers_response["registeredFrom"] == myIp:
+            peers = peers_response["peers"]
+            with open(PEERS_JSON_PATH, 'w') as f:
+                json.dump(peers, f, ensure_ascii=False, indent=4)
+            self.peers = peers
 
     def connect(self, peer: Tuple[str, int]) -> bool:
         if (peer in self.peers): # Prevent connecting back to already connected peers

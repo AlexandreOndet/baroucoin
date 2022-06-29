@@ -1,10 +1,18 @@
 from typing import Set, Dict, Any
-
+import os
 from fastapi import FastAPI, Request
 import json
+import time
+import requests
 
 blockchain = FastAPI()
-PEERS_JSON_PATH = "/server/peers.json"
+PEERS_JSON_PATH = os.getcwd() + "/peers.json"
+
+
+def get_public_ip():
+    return requests.get('https://api.ipify.org').text
+
+
 
 
 @blockchain.get("/test")
@@ -47,10 +55,9 @@ async def peers() -> dict[str, Any]:
 async def new_peer(request: Request) -> dict:
     """
     Adds a new peer to the blockchain network
-    :param request: Request -> HTTP POST request.
     :return: dict -> keys: new_peer:str -> IP Address
     """
-    server_address = "?whatsmyip?"
+    server_address = get_public_ip()
     peer_host = request.client.host
     peer_port = request.client.port
     if peer_host == "127.0.0.1":
@@ -62,7 +69,7 @@ async def new_peer(request: Request) -> dict:
         data = json.loads(f.read())
     if address in data:
         return {"Following address is already registered as a node": address}
-    data[address] = {}
+    data[peer_host] = peer_port
     with open(PEERS_JSON_PATH, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
-    return {"New peer registered with following address": address}
+    return {"registeredFrom": address, "peers": data}

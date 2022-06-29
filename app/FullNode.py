@@ -12,6 +12,7 @@ from Transaction import *
 from TransactionStore import *
 from Wallet import *
 
+
 '''
     See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
     Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
@@ -84,7 +85,7 @@ class FullNode(socketserver.ThreadingTCPServer):
     '''
 
     def validateNewBlock(self, newBlock: Block) -> bool:
-        if (newBlock.height <= self.blockchain.lastBlock.height
+        if ((len(self.blockchain.blockChain) and newBlock.height <= self.blockchain.lastBlock.height)
             or newBlock.getHash()[0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
             or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
             or newBlock.reward != self.computeReward()):
