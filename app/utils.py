@@ -7,6 +7,6 @@ def get_public_ip():
 
 
 def get_all_peers() -> dict:
-    with open(os.environ['PEERS_JSON_PATH'], "r") as f:
+    with open(os.getenv['PEERS_JSON_PATH'], "r") as f:
         peers = json.loads(f.read())
     return peers

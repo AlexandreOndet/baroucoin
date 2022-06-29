@@ -3,6 +3,10 @@ import random
 from threading import Thread
 
 from FullNode import *
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 '''
     usage : python main.py LOCALHOST_PORT [PEER_PORT ...]

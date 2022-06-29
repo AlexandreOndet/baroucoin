@@ -6,8 +6,8 @@ import os
 
 from utils import get_public_ip
 
-PEERS_JSON_PATH = os.environ["PEERS_JSON_PATH"]
-DNS_SERVER_IP = os.environ["DNS_SERVER_IP"]
+PEERS_JSON_PATH = os.getenv["PEERS_JSON_PATH"]
+DNS_SERVER_IP = os.getenv["DNS_SERVER_IP"]
 
 
 class TCPClient(object):
