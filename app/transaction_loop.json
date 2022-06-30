@@ -1,0 +1,40 @@
+{
+  "transactions" : [
+    {
+      "senders" : [["bob",1]],
+      "receivers" : [["alice",1]]
+    },
+    {
+      "senders" : [["alice",1]],
+      "receivers" : [["fredo",1]]
+    },
+    {
+      "senders" : [["fredo",1]],
+      "receivers" : [["bob",1]]
+    },
+    {
+      "senders" : [["max",1]],
+      "receivers" : [["lucie",1]]
+    },
+    {
+      "senders" : [["lucie",1]],
+      "receivers" : [["jean",1]]
+    },
+    {
+      "senders" : [["jean",1]],
+      "receivers" : [["max",1]]
+    },
+    {
+      "senders" : [["bruce",1]],
+      "receivers" : [["mia",1]]
+    },
+    {
+      "senders" : [["mia",1]],
+      "receivers" : [["jennifer",1]]
+    },
+    {
+      "senders" : [["jennifer",1]],
+      "receivers" : [["bruce",1]]
+    }
+  ]
+}
