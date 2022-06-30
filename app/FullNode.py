@@ -54,7 +54,8 @@ class FullNode(socketserver.ThreadingTCPServer):
         previous_block = self.blockchain.lastBlock
         return Block(
             timestamp=time.time(),
-            transactionStore=TransactionStore(self.transaction_pool[previous_block.height % len(self.transaction_pool)]),
+            transactionStore=TransactionStore(
+                self.transaction_pool[previous_block.height % len(self.transaction_pool) - 1]),
             # each time, we pick the next transaction in the pool
             height=previous_block.height + 1,
             consensusAlgorithm=False,
