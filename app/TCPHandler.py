@@ -25,6 +25,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         print(f"[+] Closed connection with {self.client_address}")
 
     def parseJSON(self, data: dict) -> bool:
+        # TODO : Create dict of functions to match the JSON attributes sent in the message
         if ("connect" in data):
             server_address = tuple(data['connect'])
             if (self.fullnode.client.connect(server_address)):

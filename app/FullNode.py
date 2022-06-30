@@ -86,6 +86,7 @@ class FullNode(socketserver.ThreadingTCPServer):
 
     def validateNewBlock(self, newBlock: Block) -> bool:
         if ((len(self.blockchain.blockChain) and newBlock.height <= self.blockchain.lastBlock.height)
+            or newBlock.previousHash != self.blockchain.lastBlock.getHash()
             or newBlock.getHash()[0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
             or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
             or newBlock.reward != self.computeReward()):
