@@ -13,12 +13,15 @@ class Block:
         self.miner = miner
         self.reward = reward
         self.nonce = nonce
+    
+    def __str__(self):
+        return dumps(self.__dict__, sort_keys=True)
+
+    def __repr__(self):
+        return dumps(self.__dict__, sort_keys=True)
 
     def getHash(self):
         return h.sha3_256(self.toJSON().encode()).hexdigest()
 
     def toJSON(self):
         return dumps(self, default=lambda o: o.__dict__, sort_keys=True)
-
-    def __str__(self):
-        return dumps(self.__dict__, sort_keys=True)
