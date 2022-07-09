@@ -12,11 +12,11 @@ load_dotenv()
     usage : python main.py LOCALHOST_PORT [PEER_PORT ...]
 '''
 if __name__ == "__main__":
-    node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(sys.argv[0] + str(random.randint(1, 1000))), server_address=("localhost", int(sys.argv[1])))
+    node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(sys.argv[0] + str(random.randint(1, 1000))), server_address=("127.0.0.1", int(sys.argv[1])))
     node.blockchain.createGenesisBlock()
     if (len(sys.argv) > 2):
         for port in sys.argv[2:]:
-            if node.client.connect(("localhost", int(port))):
+            if node.client.connect(("127.0.0.1", int(port))):
                 print(f'[+] Connected to localhost:{port}')
     t = Thread(target=node.serve_forever).start()
     print(f"[*] FullNode (wallet: {node.wallet.address}) listening on localhost:{sys.argv[1]}...")
@@ -34,5 +34,5 @@ if __name__ == "__main__":
             b = node.blockchain.lastBlock
             print(f"[+] Mined block #{b.height} (hash: {b.getHash()}) !")
 
-    node.client.broadcast({'end': True}) # Informs other peers to close the connection
+    node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
     node.shutdown()

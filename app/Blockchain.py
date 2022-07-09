@@ -10,7 +10,7 @@ class Blockchain:
         self.createGenesisBlock()
 
     def createGenesisBlock(self):
-        genesisBlock = Block(time.time(), TransactionStore(), 0, False, "0", "0", 100)
+        genesisBlock = Block(0, TransactionStore(), 0, False, "0", "0", 100)
 
         genesisBlock.hash = genesisBlock.getHash()
         self.blockChain.append(genesisBlock)
