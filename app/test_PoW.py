@@ -71,7 +71,7 @@ class PoWTests(unittest.TestCase):
                         f"Correct reward for block is not validated : reward={valid_block.reward}, computed={node.computeReward()}")
 
     def test_block_validation_transactions(self):
-        node = self.init_node_with_transaction()
+        node = self._init_node_with_transaction()
         block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=2,
                       consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0, reward=node.computeReward(),
                       nonce=0)
@@ -92,7 +92,7 @@ class PoWTests(unittest.TestCase):
                          f"Invalid transaction for block gets validated : transactions={block.transactionStore.transactions}")
 
     def test_transaction_validation(self):
-        node = self.init_node_with_transaction()
+        node = self._init_node_with_transaction()
         self.assertFalse(node.validateTransaction(Transaction(senders=[], receivers=[])),
                          "Empty transactions gets validated")
         self.assertFalse(node.validateTransaction(Transaction(senders=[(Wallet("first").address, 1)], receivers=[])),
@@ -106,7 +106,7 @@ class PoWTests(unittest.TestCase):
             Transaction(senders=[(Wallet("first").address, 1)], receivers=[(Wallet("second").address, 1)])),
             "Correct transaction gets invalidated")
 
-    def init_node_with_transaction(self):
+    def _init_node_with_transaction(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
         t = Transaction(senders=[(Wallet("beforefirst").address, 1)], receivers=[(Wallet("first").address, 1)])
         b = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,

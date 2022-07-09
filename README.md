@@ -5,7 +5,7 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 ### Communication entre les full nodes
 - [x] Connexions TCP entre les noeuds
 - [x] Sérialisation des messages en JSON
-- [x] ~~Récupération des informations avec l'API du serveur~~
+- [x] Récupération des informations avec l'API du serveur
 ### Échanges d'informations entres les full nodes
 - [ ] État de la blockchain
 - [x] Nouveau bloc trouvé

@@ -36,3 +36,4 @@ if __name__ == "__main__":
 
     node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
     node.shutdown()
+    node.blockchain.saveToJSON("blockchain.json", True)

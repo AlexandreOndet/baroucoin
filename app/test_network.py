@@ -6,7 +6,8 @@ from FullNode import *
 from TCPClient import *
 
 class NetworkTests(unittest.TestCase):
-    def setUp(self): # Called before running any test functions
+    @classmethod
+    def setUpClass(self): # Called before running any test functions
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning) # Clear the unclosed sockets warning for tests
         self.server_node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
 
@@ -48,7 +49,8 @@ class NetworkTests(unittest.TestCase):
 
         peer.server_close()
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(self):
         self.server_node.server_close()
 
 if __name__ == '__main__':
