@@ -7,6 +7,9 @@ _trial_temp/
 # C extensions
 *.so
 
+# Sublime text project
+*.sublime*
+
 # Draw IO
 *.drawio
 

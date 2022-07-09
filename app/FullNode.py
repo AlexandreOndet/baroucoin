@@ -1,8 +1,8 @@
-import time
+import json
 import socketserver
 import sys
+import time
 from typing import Tuple
-import json
 
 from Block import *
 from Blockchain import *
@@ -25,7 +25,7 @@ class FullNode(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
 
     def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet,
-                 server_address: Tuple[str, int] = ('localhost', 13337),
+                 server_address: Tuple[str, int] = ('127.0.0.1', 13337),
                  RequestHandlerClass: socketserver.BaseRequestHandler = TCPHandler):
         socketserver.ThreadingTCPServer.__init__(self, server_address,
                                                  RequestHandlerClass)  # Initialize the TCP server for handling peer requests
@@ -43,8 +43,8 @@ class FullNode(socketserver.ThreadingTCPServer):
     def initTransactionPool(self):
         f = open('transaction_loop.json')
         data = json.load(f)
-        for i in data['transactions']:
-            self.transaction_pool.append(Transaction(list(i['senders']), list(i['receivers'])))
+        for t in data['transactions']:
+            self.transaction_pool.append(Transaction(list(t['senders']), list(t['receivers'])))
         f.close()
 
     def addToTransactionPool(self, t: Transaction):

@@ -18,14 +18,13 @@ class PoWTests(unittest.TestCase):
 
     def test_block_validation_difficulty(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
-        block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
-                      consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
+        block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
+                      consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0, reward=node.computeReward(),
                       nonce=0)
 
-        while block.getHash()[
-            0] == '0':  # Generate a block with hash not validating any Proof of Work (no zeroes at start)
-            block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
-                          consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0,
+        while block.getHash()[0] == '0':  # Generate a block with hash not validating any Proof of Work (no zeroes at start)
+            block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
+                          consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0,
                           reward=node.computeReward(), nonce=0)
         self.assertFalse(node.validateNewBlock(block),
                          f"Non-mined block passes as valid block : hash={block.getHash()}, difficulty={node.consensusAlgorithm.blockDifficulty}")
@@ -38,16 +37,16 @@ class PoWTests(unittest.TestCase):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
 
         # Timestamp 1 day in the future
-        invalid_block = Block(timestamp=time.time() + 24 * 3600, transactionStore=TransactionStore(), height=0,
-                              consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0,
+        invalid_block = Block(timestamp=time.time() + 24 * 3600, transactionStore=TransactionStore(), height=1,
+                              consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0,
                               reward=node.computeReward(), nonce=0)
         node.consensusAlgorithm.mine(invalid_block)  # Don't forget to mine the block for valid hash
         self.assertFalse(node.validateNewBlock(invalid_block),
                          f"Invalid timestamp for block passes as valid block : timestamp={invalid_block.timestamp}, diff={invalid_block.timestamp - time.time()}")
 
         # Correct timestamp
-        valid_block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
-                            consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0,
+        valid_block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
+                            consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0,
                             reward=node.computeReward(), nonce=0)
         node.consensusAlgorithm.mine(valid_block)  # Don't forget to mine the block for valid hash
         self.assertTrue(node.validateNewBlock(valid_block),
@@ -57,15 +56,15 @@ class PoWTests(unittest.TestCase):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
 
         # Invalid null reward
-        invalid_block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
-                              consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=0, nonce=0)
+        invalid_block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
+                              consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0, reward=0, nonce=0)
         node.consensusAlgorithm.mine(invalid_block)  # Don't forget to mine the block for valid hash
         self.assertFalse(node.validateNewBlock(invalid_block),
                          f"Invalid reward for block passes as valid block : reward={invalid_block.reward}, computed={node.computeReward()}")
 
         # Correct reward
-        valid_block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
-                            consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0,
+        valid_block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
+                            consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0,
                             reward=node.computeReward(), nonce=0)
         node.consensusAlgorithm.mine(valid_block)  # Don't forget to mine the block for valid hash
         self.assertTrue(node.validateNewBlock(valid_block),
@@ -73,8 +72,8 @@ class PoWTests(unittest.TestCase):
 
     def test_block_validation_transactions(self):
         node = self.init_node_with_transaction()
-        block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
-                      consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
+        block = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=2,
+                      consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0, reward=node.computeReward(),
                       nonce=0)
 
         # Generate valid transaction
@@ -110,8 +109,8 @@ class PoWTests(unittest.TestCase):
     def init_node_with_transaction(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
         t = Transaction(senders=[(Wallet("beforefirst").address, 1)], receivers=[(Wallet("first").address, 1)])
-        b = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=0,
-                  consensusAlgorithm=node.consensusAlgorithm, previousHash=0, miner=0, reward=node.computeReward(),
+        b = Block(timestamp=time.time(), transactionStore=TransactionStore(), height=1,
+                  consensusAlgorithm=node.consensusAlgorithm, previousHash=node.blockchain.lastBlock.getHash(), miner=0, reward=node.computeReward(),
                   nonce=0)
         b.transactionStore.addTransaction(t)
         node.consensusAlgorithm.mine(b)

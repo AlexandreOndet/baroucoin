@@ -7,6 +7,7 @@ from TransactionStore import *
 class Blockchain:
     def __init__(self):
         self.blockChain = []
+        self.createGenesisBlock()
 
     def createGenesisBlock(self):
         genesisBlock = Block(time.time(), TransactionStore(), 0, False, "0", "0", 100)

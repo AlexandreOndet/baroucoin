@@ -1,4 +1,4 @@
-import Transaction
+from Transaction import *
 
 class TransactionStore(dict):
     def __init__(self, transactions: Transaction = None):
