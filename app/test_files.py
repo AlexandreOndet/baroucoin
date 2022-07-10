@@ -20,7 +20,7 @@ class FilesTests(unittest.TestCase):
         Verifies saving blockchain to JSON 
     '''
     def test_blockchain_save_json(self):
-        self.blockchain.saveToJSON(self.json_filename, overwrite=True)
+        self.assertTrue(self.blockchain.saveToJSON(self.json_filename, overwrite=True))
         self.assertTrue(Path(self.json_filename).is_file(), 
             f"File was not created : json_filename={self.json_filename}")
         
@@ -35,7 +35,7 @@ class FilesTests(unittest.TestCase):
 
         time.sleep(0.01) # Add delay before updating so saved timestamp are not equal
         self.blockchain.addBlock(next(self.block_generator))
-        self.blockchain.saveToJSON(self.json_filename) # No overwrite, file should be updated
+        self.assertTrue(self.blockchain.saveToJSON(self.json_filename)) # No overwrite, file should be updated
 
         with open(self.json_filename) as f:
             json_data = json.loads(f.read())
@@ -48,8 +48,7 @@ class FilesTests(unittest.TestCase):
         Verifies a shorter blockchain is not saved without setting overwrite=True
     '''
     def test_blockchain_save_json_height_check(self):
-        self.blockchain.saveToJSON(self.json_filename, overwrite=True)
-        last_updated = json.loads(Path(self.json_filename).read_text())['savedTime']
+        self.assertTrue(self.blockchain.saveToJSON(self.json_filename, overwrite=True))
         
         wont_save = Blockchain()
         wont_save_block_generator = self._generate_block(wont_save.lastBlock)
@@ -60,29 +59,37 @@ class FilesTests(unittest.TestCase):
         self.assertLess(len(wont_save.blockChain), len(self.blockchain.blockChain), 
             f"'wont_save' blockchain is longer than the original blockchain : wont_save={len(wont_save.blockChain)}, original={len(self.blockchain.blockChain)}")
         
-        wont_save.saveToJSON(self.json_filename) # Overwrite is false but since the last block height is less than the last saved block height, the save won't be updated
-        same_as_last_update = json.loads(Path(self.json_filename).read_text())['savedTime'] # Reload 'saveTime' from file
-        self.assertEqual(last_updated, same_as_last_update, 
-            f"File should not get updated : last_updated={last_updated}, same_as_previous_update={same_as_last_update}")
+        # Overwrite is false but since the last block height is less than the last saved block height, the save won't be updated
+        self.assertFalse(wont_save.saveToJSON(self.json_filename),
+            f"File should not get updated")
 
         time.sleep(0.01) # Add delay before updating so saved timestamp are not equal
-        wont_save.saveToJSON(self.json_filename, overwrite=True) # Force the save
-        new_update = json.loads(Path(self.json_filename).read_text())['savedTime'] # Reload 'saveTime' from file, should be updated
-        self.assertLess(last_updated, new_update,
-            f"File did not update with overwrite=True : last_updated={last_updated}, new_update={new_update}")
+        self.assertTrue(wont_save.saveToJSON(self.json_filename, overwrite=True),# Force the save
+            f"File did not update with overwrite=True")
 
     def test_blockchain_load_json(self):
         self.blockchain.saveToJSON(self.json_filename, overwrite=True)
 
         copy = Blockchain()
-        copy.loadFromJSON(self.json_filename)
 
+        self.assertTrue(copy.loadFromJSON(self.json_filename))
         self.assertEqual(len(copy.blockChain), len(self.blockchain.blockChain),
             f"'copy' blockchain length is not the same as original : copy={len(copy.blockChain)}, original={len(self.blockchain.blockChain)}")
 
         divergent_index = self._check_blockchain_equality(copy, self.blockchain)
         self.assertEqual(divergent_index, len(copy.blockChain),
-                f"'copy' blockchain data is not the same as original : block_height={divergent_index}")
+            f"'copy' blockchain data is not the same as original : block_height={divergent_index}")
+
+        copy.addBlock(next(self.block_generator)) # copy is now longer than original
+        self.assertFalse(copy.loadFromJSON(self.json_filename),
+            f"File should not be loaded")
+
+        divergent_index = self._check_blockchain_equality(copy, self.blockchain)
+        self.assertLess(divergent_index, len(copy.blockChain),
+            f"'copy' blockchain should be longer than original : divergent_index={divergent_index}, copy={len(copy.blockChain)}")
+
+        self.assertTrue(copy.loadFromJSON(self.json_filename, overwrite=True), # Force load
+            f"File did not get loaded with overwrite=True")
 
     def tearDown(self):
         Path(self.json_filename).unlink() # Delete file after each test
