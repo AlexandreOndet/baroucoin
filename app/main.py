@@ -1,5 +1,4 @@
 import sys
-import random
 from threading import Thread
 
 from FullNode import *
@@ -9,13 +8,19 @@ load_dotenv()
 
 
 '''
-    usage : python main.py LOCALHOST_PORT [PEER_PORT ...]
+    usage : python main.py LOCALHOST_PORT WALLET_SALT [PEER_PORT ...]
 '''
 if __name__ == "__main__":
-    node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(sys.argv[0] + str(random.randint(1, 1000))), server_address=("127.0.0.1", int(sys.argv[1])))
-    node.blockchain.createGenesisBlock()
-    if (len(sys.argv) > 2):
-        for port in sys.argv[2:]:
+    if (len(sys.argv) < 2):
+        print(f"Usage : {sys.argv[0]} LOCALHOST_PORT WALLET_SALT [PEER_PORT ...]")
+        exit(1)
+
+    node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(sys.argv[0] + sys.argv[2]), server_address=("127.0.0.1", int(sys.argv[1])))
+    json_save_file = node.wallet.address + ".json"
+
+    node.blockchain.loadFromJSON(json_save_file, True)
+    if (len(sys.argv) > 3):
+        for port in sys.argv[3:]:
             if node.client.connect(("127.0.0.1", int(port))):
                 print(f'[+] Connected to localhost:{port}')
     t = Thread(target=node.serve_forever).start()
@@ -36,4 +41,4 @@ if __name__ == "__main__":
 
     node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
     node.shutdown()
-    node.blockchain.saveToJSON("blockchain.json", True)
+    node.blockchain.saveToJSON(json_save_file, True)

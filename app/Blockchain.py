@@ -32,26 +32,33 @@ class Blockchain:
         lastSavedBlockHeight = self.lastBlock.height
         lastUpdated = "?"
         countUpdated = 0
-        with open(file) as f:
-            try:
-                data = json.load(f)
-                if overwrite:
-                    self.blockChain = []
-                    lastSavedBlockHeight = -1
-                elif (data['lastBlockHeight'] <= self.lastBlock.height):
-                    print("[-] Loading aborted: current blockchain is longer than previously saved blockchain (set overwrite=True to force load)")
+        try:
+            with open(file) as f:
+                try:
+                    data = json.load(f)
+                    if overwrite:
+                        self.blockChain = []
+                        lastSavedBlockHeight = -1
+                    elif (data['lastBlockHeight'] <= self.lastBlock.height):
+                        print("[-] Loading aborted: current blockchain is longer than previously saved blockchain (set overwrite=True to force load)")
+                        return False
+
+                    for block in data['blocks']:
+                        block = json.loads(block)
+                        if (block['height'] > lastSavedBlockHeight):
+                            self.blockChain.append(Block.fromJSON(block))
+                            countUpdated += 1
+
+                    lastUpdated = data['savedTime']
+                except Exception as e:
+                    print(f"[ERROR] Could not load save file: ", e)
                     return False
-
-                for block in data['blocks']:
-                    block = json.loads(block)
-                    if (block['height'] > lastSavedBlockHeight):
-                        self.blockChain.append(Block.fromJSON(block))
-                        countUpdated += 1
-
-                lastUpdated = data['savedTime']
-            except Exception as e:
-                print(f"[ERROR] Could not load save file: ", e)
-                return False
+        except FileNotFoundError:
+            print(f"[ERROR] File '{file}' does not exists !")
+            return False
+        except Exception as e:
+            print(f"[ERROR] Exception caught : {e}")
+            return False
 
         print(f"[+] Successfully loaded {countUpdated} blocks from '{file}' (last updated {lastUpdated})")
         return True

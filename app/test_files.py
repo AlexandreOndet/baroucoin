@@ -68,10 +68,15 @@ class FilesTests(unittest.TestCase):
             f"File did not update with overwrite=True")
 
     def test_blockchain_load_json(self):
-        self.blockchain.saveToJSON(self.json_filename, overwrite=True)
-
         copy = Blockchain()
 
+        non_existing_file = 'doesnotexist'
+        if Path(non_existing_file).is_file(): # If file exists, delete it
+            Path(non_existing_file).unlink()
+        self.assertFalse(copy.loadFromJSON(non_existing_file, overwrite=True),
+            f"Should not load non-existing file '{non_existing_file}' : is_file={Path(non_existing_file).is_file()}")
+        
+        self.assertTrue(self.blockchain.saveToJSON(self.json_filename, overwrite=True))
         self.assertTrue(copy.loadFromJSON(self.json_filename))
         self.assertEqual(len(copy.blockChain), len(self.blockchain.blockChain),
             f"'copy' blockchain length is not the same as original : copy={len(copy.blockChain)}, original={len(self.blockchain.blockChain)}")
