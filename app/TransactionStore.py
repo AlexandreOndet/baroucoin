@@ -1,3 +1,4 @@
+from __future__ import annotations # Allows for using class type hinting within class (see https://stackoverflow.com/a/33533514)
 from Transaction import *
 
 class TransactionStore(dict):
@@ -13,3 +14,7 @@ class TransactionStore(dict):
 
     def addTransaction(self, transaction: Transaction):
         self.transactions.append(transaction)
+
+    @classmethod
+    def fromJSON(cls, store: dict) -> TransactionStore:
+        return cls(**store)

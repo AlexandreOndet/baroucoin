@@ -42,8 +42,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def newBlock(self, data) -> bool:
         data = json.loads(data); # TODO : Add deserialization checks
-        data['transactionStore'] = TransactionStore(**data['transactionStore']);
-        block = Block(**data)
+        data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
+        block = Block.fromJSON(data)
         if (self.fullnode.validateNewBlock(block)):
             print(f"[+] Validated block #{block.height} (hash: {block.getHash()}) !")
             self.fullnode.blockchain.addBlock(block)
