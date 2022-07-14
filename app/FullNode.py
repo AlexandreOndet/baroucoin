@@ -39,6 +39,10 @@ class FullNode(socketserver.ThreadingTCPServer):
     def __del__(self):
         self.server_close()
 
+    @property
+    def id(self):
+        return self.wallet.address[:6]
+    
     def addToTransactionPool(self, t: Transaction):
         self.transaction_pool.append(t)
 

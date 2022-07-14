@@ -2,7 +2,7 @@ from __future__ import annotations # Allows for using class type hinting within 
 from Transaction import *
 
 class TransactionStore(dict):
-    def __init__(self, transactions: Transaction = None):
+    def __init__(self, transactions: list(Transaction) = None):
         super(TransactionStore, self).__init__()
         self.transactions = transactions if transactions != None else []
     
