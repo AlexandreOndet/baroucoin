@@ -1,5 +1,6 @@
 import time
 import json
+import os
 from typing import Union
 
 from Block import *
@@ -66,6 +67,7 @@ class Blockchain:
     def saveToJSON(self, file: Union[str, bytes], overwrite=False) -> bool:
         blockchain = {} # JSON object to save blockchain data
         lastSavedBlockHeight = -1 # Allow inclusion of genesis block with height=0
+        os.makedirs(os.path.dirname(file), exist_ok=True)
         with open(file, 'a+') as f: # 'a+' enables reading AND writing to file AND create it if it does not yet exists
             blockchain['blocks'] = []
 
