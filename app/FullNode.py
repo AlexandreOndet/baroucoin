@@ -35,7 +35,31 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
         self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
         self.transaction_pool = []
+        self.currentBlockToFetch = []
         self.initTransactionPool()
+
+    def sync_with_peers(self):
+        latest_local_block_hash = self.blockchain.lastBlock.getHash()
+        self.client.broadcast(json.dumps({
+            "getLastBlock": latest_local_block_hash
+        }))
+
+    def send_last_block(self, peer_address):
+        latest_local_block = self.blockchain.lastBlock
+        data = {"receiveMyLastBlock": latest_local_block.getHash(), "lastBlockHeight": latest_local_block.height}
+        self.client.send_data_to_peer(data, peer_address)
+
+    def ask_inventory(self, peer_address, receivedLatestBlockHash, receivedLatestBlockHeight):
+        latest_local_block = self.blockchain.lastBlock
+        data = {"askingForInventory": "", "from": latest_local_block.height, "to": receivedLatestBlockHeight}
+        self.client.send_data_to_peer(data, peer_address)
+
+    def returnInventory(self, peer_address, from_height, to_height):
+        for block_height in range(from_height, to_height, 1):
+            block = self.blockchain.blockChain[block_height]
+            # Sending block per block to avoid going above buffer size of recv in TCPHandler
+            data = {"returnInventory": "", "block_height": block_height, "block_json": block}
+            self.client.send_data_to_peer(data, peer_address)
 
     def __del__(self):
         self.server_close()
