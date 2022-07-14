@@ -35,28 +35,24 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
         self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
         self.transaction_pool = []
-        self.initTransactionPool()
 
     def __del__(self):
         self.server_close()
 
-    def initTransactionPool(self):
-        f = open('transaction_loop.json')
-        data = json.load(f)
-        for t in data['transactions']:
-            self.transaction_pool.append(Transaction(list(t['senders']), list(t['receivers'])))
-        f.close()
-
     def addToTransactionPool(self, t: Transaction):
         self.transaction_pool.append(t)
+
+    def removeFromTransactionPool(self, t: Transaction):
+        try:
+            self.transaction_pool.remove(t)
+        except ValueError:
+            print(f"[!] Could not find transaction in transaction pool : {t}")
 
     def createNewBlock(self) -> Block:
         previous_block = self.blockchain.lastBlock
         return Block(
             timestamp=time.time(),
-            transactionStore=TransactionStore(
-                self.transaction_pool[previous_block.height % len(self.transaction_pool) - 1]),
-            # each time, we pick the next transaction in the pool
+            transactionStore=TransactionStore([t for t in self.transaction_pool]),
             height=previous_block.height + 1,
             consensusAlgorithm=False,
             previousHash=previous_block.getHash(),
@@ -66,8 +62,7 @@ class FullNode(socketserver.ThreadingTCPServer):
     def computeReward(self) -> int:
         return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
-    def mineNewBlock(
-            self):  # TODO : rework to be able to interrupt mining once a valid block has been received for the same height
+    def mineNewBlock(self):  # TODO : interrupt mining once a valid block has been received for the same height
         new_block = self.createNewBlock()
         self.consensusAlgorithm.mine(new_block)
         self.blockchain.addBlock(new_block)
