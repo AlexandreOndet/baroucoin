@@ -1,5 +1,5 @@
 from __future__ import annotations # Allows for using class type hinting within class (see https://stackoverflow.com/a/33533514)
-from Transaction import *
+from app.Transaction import *
 
 class TransactionStore(dict):
     def __init__(self, transactions: list(Transaction) = None):

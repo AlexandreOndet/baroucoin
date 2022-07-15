@@ -1,4 +1,4 @@
-from ConsensusAlgorithm import *
+from app.ConsensusAlgorithm import *
 
 
 class ProofOfWork(ConsensusAlgorithm, dict):

@@ -2,13 +2,15 @@ import logging
 import random
 import sys
 import time
+from dotenv import load_dotenv
+from pathlib import Path
 from threading import Thread
 from typing import Callable
 
-from FullNode import *
-from dotenv import load_dotenv
+from app.FullNode import *
 
 load_dotenv()
+app_dir = Path(__file__).parent
 
 class Orchestrator(Thread):
     """docstring for Orchestrator"""
@@ -73,7 +75,7 @@ class Orchestrator(Thread):
     '''
     def _getNextTransaction(self):
         transactions = []
-        with open('transaction_loop.json') as f:
+        with open(app_dir / 'transaction_loop.json') as f:
             data = json.load(f)
             for t in data['transactions']:
                 transactions.append(Transaction(list(t['senders']), list(t['receivers'])))
@@ -90,7 +92,7 @@ class Orchestrator(Thread):
     usage : python main.py
 '''
 if __name__ == "__main__":
-    file_handler = logging.FileHandler("simulation.log", mode='w')
+    file_handler = logging.FileHandler(app_dir / "simulation.log", mode='w')
     
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)

@@ -3,8 +3,8 @@ import socketserver
 import json
 from typing import Callable
 
-from Block import *
-from TransactionStore import *
+from app.Block import *
+from app.TransactionStore import *
 
 '''
     See https://docs.python.org/3/library/socketserver.html#request-handler-objects for reference

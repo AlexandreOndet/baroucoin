@@ -1,10 +1,10 @@
 import unittest
 import time
 
-from ProofOfWork import *
-from Blockchain import *
-from FullNode import *
-from Transaction import *
+from app.ProofOfWork import *
+from app.Blockchain import *
+from app.FullNode import *
+from app.Transaction import *
 
 
 class PoWTests(unittest.TestCase):

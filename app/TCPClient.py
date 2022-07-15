@@ -1,11 +1,11 @@
 import logging
 import socket
 import json
-from typing import Tuple
 import requests
 import os
+from typing import Tuple
 
-from utils import get_public_ip
+from app.utils import get_public_ip
 
 PEERS_JSON_PATH = os.getenv("PEERS_JSON_PATH")
 DNS_SERVER_IP = os.getenv("DNS_SERVER_IP")

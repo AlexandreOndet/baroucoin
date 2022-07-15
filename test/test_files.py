@@ -2,8 +2,8 @@ import unittest
 import time
 from pathlib import Path
 
-from Block import *
-from Blockchain import *
+from app.Block import *
+from app.Blockchain import *
 
 class FilesTests(unittest.TestCase):
     @classmethod

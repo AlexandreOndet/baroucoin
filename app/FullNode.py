@@ -5,14 +5,14 @@ import sys
 import time
 from typing import Tuple
 
-from Block import *
-from Blockchain import *
-from ProofOfWork import *
-from TCPClient import *
-from TCPHandler import *
-from Transaction import *
-from TransactionStore import *
-from Wallet import *
+from app.Block import *
+from app.Blockchain import *
+from app.ProofOfWork import *
+from app.TCPClient import *
+from app.TCPHandler import *
+from app.Transaction import *
+from app.TransactionStore import *
+from app.Wallet import *
 
 '''
     See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 

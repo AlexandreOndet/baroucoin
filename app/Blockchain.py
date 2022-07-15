@@ -4,8 +4,8 @@ import json
 import os
 from typing import Union
 
-from Block import *
-from TransactionStore import *
+from app.Block import *
+from app.TransactionStore import *
 
 class Blockchain:
     def __init__(self):
