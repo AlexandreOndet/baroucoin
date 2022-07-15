@@ -1,3 +1,4 @@
+import logging
 import socket
 import json
 from typing import Tuple
@@ -43,7 +44,7 @@ class TCPClient(object):
             self.peers[peer] = sock
             sock.send(json.dumps({'connect': self.server_addr}).encode('utf-8')) # Sends server listening port for the remote peer to connect
         except Exception as e:
-            print("[ERROR] connect: ", e)
+            logging.error(f"connect: {e}")
             return False # TODO : Handle connect exception
 
         return True
@@ -52,7 +53,7 @@ class TCPClient(object):
         try:
             self.peers[peer].close()
         except Exception as e:
-            print("[ERROR] close: ", e)
+            logging.error(f"close: {e}")
             return False # TODO : Handle close exception
 
         if clear:
@@ -64,5 +65,5 @@ class TCPClient(object):
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
             except Exception as e:
-                print("[ERROR] send: ", e)
+                logging.error(f"send: {e}")
                 pass # TODO : Handle send exception

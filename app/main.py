@@ -1,7 +1,9 @@
+import logging
 import random
 import sys
 import time
 from threading import Thread
+from typing import Callable
 
 from FullNode import *
 from dotenv import load_dotenv
@@ -28,9 +30,9 @@ class Orchestrator(Thread):
             node = self.nodes[i]
             for peer in self.nodes[i+1:]:
                 if (node.client.connect(peer.server_address)):
-                    print(f"[+] Connected {node.id} {node.server_address} to {peer.id} {peer.server_address}")
+                    self._log(logging.info, f"Connected {node.id} {node.server_address} to {peer.id} {peer.server_address} [success]")
                 else:
-                    print(f"[-] Failed to connect {node.id} {node.server_address} to {peer.id} {peer.server_address} !")
+                    self._log(logging.info, f"Failed to connect {node.id} {node.server_address} to {peer.id} {peer.server_address} [failure]")
 
     @property
     def numberOfNodes(self) -> int:
@@ -41,12 +43,12 @@ class Orchestrator(Thread):
             if (random.randint(1, 10) <= self.transactionFrequency):
                 chosenNode = random.choice(self.nodes)
                 chosenNode.addToTransactionPool(next(self.transactions))
-                print(f"[*] Sending transaction to {chosenNode.id}...")
+                self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
 
             for node in self.nodes:
                 if (random.randint(1, 10) <= self.miningFrequency):
                     node.mineNewBlock()
-                    print(f"[*] Node {node.id} is mining block #{node.blockchain.lastBlock.height}")
+                    self._log(logging.info, f"Node {node.id} is mining block #{node.blockchain.lastBlock.height}")
             time.sleep(self.epoch / 1000)
 
         for node in self.nodes:
@@ -55,7 +57,7 @@ class Orchestrator(Thread):
 
     def addNode(self) -> bool:
         if (self.numberOfNodes == self.maxNodes):
-            print(f"[-] Maximum numbers of nodes reached ({self.maxNodes} nodes) !")
+            self._log(logging.info, f"Maximum numbers of nodes reached ({self.maxNodes} nodes) [failure]")
             return False
 
         self.nodes.append(FullNode(consensusAlgorithm=False, existing_wallet=Wallet(str(self.numberOfNodes)), server_address=("127.0.0.1", 10000 + self.numberOfNodes)))
@@ -81,10 +83,30 @@ class Orchestrator(Thread):
             yield transactions[i]
             i = (i + 1) % len(transactions)
 
+    def _log(self, level_func: Callable, msg: str):
+        level_func(f"[_MAIN_] " + msg)
+
 '''
     usage : python main.py
 '''
-if __name__ == "__main__":	
+if __name__ == "__main__":
+    file_handler = logging.FileHandler("simulation.log", mode='w')
+    
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    logging.basicConfig(
+        handlers=[file_handler, console_handler], 
+        level=logging.DEBUG, 
+        format='T+%(relativeCreated)d\t%(levelname)s %(message)s'
+    )
+
+    logging.addLevelName(logging.DEBUG, '[DEBUG]')
+    logging.addLevelName(logging.INFO, '[*]')
+    logging.addLevelName(logging.WARNING, '[!]')
+    logging.addLevelName(logging.ERROR, '[ERROR]')
+    logging.addLevelName(logging.CRITICAL, '[CRITICAL]')
+
     simulation = Orchestrator()
     simulation.start()
 
@@ -92,12 +114,12 @@ if __name__ == "__main__":
     while run:
         user_input = ""
         while (user_input not in ['q', 'a', 'Q', 'A']):
-            user_input = input("[x] Press q to quit :\n")
+            user_input = input()
 
         if (user_input == 'q' or user_input == 'Q'):
             run = False
         elif (user_input == 'a' or user_input == 'A'):
             simulation.addNode()
-            print(f"[+] Added one node")
+            logging.info(f"Added new node")
 
     simulation.isRunning = False

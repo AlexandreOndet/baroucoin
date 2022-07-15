@@ -1,3 +1,4 @@
+import logging
 import json
 import socketserver
 import sys
@@ -50,7 +51,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         try:
             self.transaction_pool.remove(t)
         except ValueError:
-            print(f"[!] Could not find transaction in transaction pool : {t}")
+            logging.error(f"Could not find transaction in transaction pool : {t}")
 
     def createNewBlock(self) -> Block:
         previous_block = self.blockchain.lastBlock

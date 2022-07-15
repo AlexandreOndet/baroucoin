@@ -1,5 +1,7 @@
+import logging
 import socketserver
 import json
+from typing import Callable
 
 from Block import *
 from TransactionStore import *
@@ -18,13 +20,13 @@ class TCPHandler(socketserver.BaseRequestHandler):
             text = data.decode("utf-8")
             try:
                 json_payload = json.loads(text) # TODO : Handle exceptions
-                print(f"[DEBUG] Received {len(data)} bytes from {self.client_address} :\n{json.dumps(json_payload, indent=4, sort_keys=True)}\n")
+                self._log(logging.debug, f"Received {len(data)} bytes from {self.client_address} :\n{json.dumps(json_payload, indent=4, sort_keys=True)}\n")
                 keep_alive = self.parseJSON(json_payload)
             except Exception as e:
                 keep_alive = False
 
         self.request.close()
-        print(f"[+] Closed connection with {self.client_address}")
+        self._log(logging.info, f"Closed connection with {self.client_address} [success]")
 
     def parseJSON(self, data: dict) -> bool:
         for method in list(data.keys()):
@@ -34,9 +36,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def connect(self, data) -> bool:
         server_address = tuple(data) # TODO : Add deserialization checks
         if (self.fullnode.client.connect(server_address)):
-            print(f"[*] Connected back to {server_address}...")
+            self._log(logging.info, f"Connected back to {server_address} [success]")
         else:
-            print(f"[!] Already connected to {server_address} !")
+            self._log(logging.warning, f"Already connected to {server_address}")
 
         return True
 
@@ -45,13 +47,16 @@ class TCPHandler(socketserver.BaseRequestHandler):
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
         block = Block.fromJSON(data)
         if (self.fullnode.validateNewBlock(block)):
-            print(f"[+] Validated block #{block.height} (hash: {block.getHash()}) !")
+            self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
             self.fullnode.blockchain.addBlock(block)
         else:
-            print(f"[!] Block #{block.height} invalid: hash={block.getHash()}, lastBlock.height={self.fullnode.blockchain.lastBlock.height}")
+            self._log(logging.warning, f"Block #{block.height} invalid: hash={block.getHash()}, lastBlock.height={self.fullnode.blockchain.lastBlock.height}")
         return True
 
     def end(self, data) -> bool:
         server_address = tuple(data) # TODO : Add deserialization checks
         self.fullnode.client.disconnect(server_address) # Disconnects but do not remove the peer from the peers list
         return False
+
+    def _log(self, level_func: Callable, msg: str):
+        level_func(f"[{self.fullnode.id}] " + msg)
