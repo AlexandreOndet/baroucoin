@@ -23,6 +23,11 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [ ] Documentation des classes
 - [ ] Documentation des fonctions
 
+# Lancement de la simulation
+Via le script `run.bat` ou `python -m app.main` depuis la racine. 
+
+Les tests peuvent être lancés via `python -m unittest test.test_xxx`. L'option `-b` peut être utilisée pour supprimer les messages vers la console lors des tests.
+
 # Lancement du serveur
 Pour initialiser le serveur (jouant un rôle de DNS central pour simplifier la découvertes des noeuds du réseau), nous utilisons Docker.
 

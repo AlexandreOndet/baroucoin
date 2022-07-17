@@ -1,10 +1,10 @@
 import unittest
 import time
 
-from ProofOfWork import *
-from Blockchain import *
-from FullNode import *
-from Transaction import *
+from app.ProofOfWork import *
+from app.Blockchain import *
+from app.FullNode import *
+from app.Transaction import *
 
 
 class PoWTests(unittest.TestCase):
@@ -105,6 +105,27 @@ class PoWTests(unittest.TestCase):
         self.assertTrue(node.validateTransaction(
             Transaction(senders=[(Wallet("first").address, 1)], receivers=[(Wallet("second").address, 1)])),
             "Correct transaction gets invalidated")
+
+    def test_transaction_pool(self):
+        transactions = [
+            Transaction(senders=[(Wallet("1").address, 1)], receivers=[(Wallet("2").address, 1)]),
+            Transaction(senders=[(Wallet("2").address, 1)], receivers=[(Wallet("3").address, 1)]),
+            Transaction(senders=[(Wallet("3").address, 1)], receivers=[(Wallet("1").address, 1)])
+        ]
+        node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
+
+        for t in transactions:
+            node.addToTransactionPool(t)
+        self.assertEqual(node.transaction_pool, transactions,
+            f"Node transaction pool doesn't contains all transactions : transaction_pool={node.transaction_pool}, transactions={transactions}")
+
+        b = node.createNewBlock()
+        self.assertEqual(b.transactionStore.transactions, transactions, 
+            f"New block transactions are not the same as original transactions : newblock={b.transactionStore}, original={transactions}")
+
+        node.removeFromTransactionPool(transactions[0])
+        self.assertEqual(node.transaction_pool, transactions[1:],
+            f"Transaction is not removed from transaction pool : transaction_pool={node.transaction_pool}, new_transactions={transactions[1:]}")
 
     def _init_node_with_transaction(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))

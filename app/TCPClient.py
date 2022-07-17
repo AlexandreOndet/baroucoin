@@ -1,10 +1,11 @@
+import logging
 import socket
 import json
-from typing import Tuple
 import requests
 import os
+from typing import Tuple
 
-from utils import get_public_ip, get_all_peers
+from utils import get_public_ip
 
 from dotenv import load_dotenv
 
@@ -71,8 +72,8 @@ class TCPClient(object):
             sock.send(json.dumps({'connect': self.server_addr, 'peers': self.peers}).encode(
                 'utf-8'))  # Sends server listening port for the remote peer to connect
         except Exception as e:
-            print("[ERROR] connect: ", e)
-            return False  # TODO : Handle connect exception
+            logging.error(f"connect: {e}")
+            return False # TODO : Handle connect exception
 
         return True
 
@@ -80,18 +81,17 @@ class TCPClient(object):
         try:
             self.peers[peer].close()
         except Exception as e:
-            print("[ERROR] close: ", e)
-            return False  # TODO : Handle close exception
+            logging.error(f"close: {e}")
+            return False # TODO : Handle close exception
 
         if clear:
             del self.peers[peer]
         return True
 
-    def broadcast(self,
-                  data):  # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
+    def broadcast(self, data): # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
         for (peer, sock) in self.peers.items():
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
             except Exception as e:
-                print("[ERROR] send: ", e)
-                pass  # TODO : Handle send exception
+                logging.error(f"send: {e}")
+                pass # TODO : Handle send exception

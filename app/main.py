@@ -1,48 +1,127 @@
+import logging
+import random
 import sys
-from threading import Thread
-
-from FullNode import *
+import time
 from dotenv import load_dotenv
+from pathlib import Path
+from threading import Thread
+from typing import Callable
+
+from app.FullNode import *
 
 load_dotenv()
+app_dir = Path(__file__).parent
 
+class Orchestrator(Thread):
+    """docstring for Orchestrator"""
+    def __init__(self):
+        super(Orchestrator, self).__init__()
+        self.maxNodes = 3
+        self.epoch = 1000 # in milliseconds
+        self.transactionFrequency = 5
+        self.miningFrequency = 2
+        self.isRunning = True
+
+        self.transactions = self._getNextTransaction()
+        self.nodes = [FullNode(consensusAlgorithm=False, existing_wallet=Wallet(str(i)), server_address=("127.0.0.1", 10000 + i)) for i in range(self.maxNodes)]
+        
+        for node in self.nodes: # Initiate server on all nodes
+            Thread(target=node.serve_forever).start()
+        
+        for i in range(self.numberOfNodes - 1): # Make nodes all connected to each other
+            node = self.nodes[i]
+            for peer in self.nodes[i+1:]:
+                if (node.client.connect(peer.server_address)):
+                    self._log(logging.info, f"Connected {node.id} {node.server_address} to {peer.id} {peer.server_address} [success]")
+                else:
+                    self._log(logging.info, f"Failed to connect {node.id} {node.server_address} to {peer.id} {peer.server_address} [failure]")
+
+    @property
+    def numberOfNodes(self) -> int:
+        return len(self.nodes)
+
+    def run(self):
+        while self.isRunning:
+            if (random.randint(1, 10) <= self.transactionFrequency):
+                chosenNode = random.choice(self.nodes)
+                chosenNode.addToTransactionPool(next(self.transactions))
+                self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
+
+            for node in self.nodes:
+                if (random.randint(1, 10) <= self.miningFrequency):
+                    node.mineNewBlock()
+                    self._log(logging.info, f"Node {node.id} is mining block #{node.blockchain.lastBlock.height}")
+            time.sleep(self.epoch / 1000)
+
+        for node in self.nodes:
+            node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
+            node.shutdown() # Stops the node's server
+
+    def addNode(self) -> bool:
+        if (self.numberOfNodes == self.maxNodes):
+            self._log(logging.info, f"Maximum numbers of nodes reached ({self.maxNodes} nodes) [failure]")
+            return False
+
+        self.nodes.append(FullNode(consensusAlgorithm=False, existing_wallet=Wallet(str(self.numberOfNodes)), server_address=("127.0.0.1", 10000 + self.numberOfNodes)))
+        return True
+
+    def removeNode(self, node: FullNode):
+        node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
+        node.shutdown() # Stops the node's server
+        self.nodes.remove(node)
+
+    '''
+        Generator for transactions: loads transactions from JSON and loops through the list sequentially 
+    '''
+    def _getNextTransaction(self):
+        transactions = []
+        with open(app_dir / 'transaction_loop.json') as f:
+            data = json.load(f)
+            for t in data['transactions']:
+                transactions.append(Transaction(list(t['senders']), list(t['receivers'])))
+
+        i = 0
+        while True:
+            yield transactions[i]
+            i = (i + 1) % len(transactions)
+
+    def _log(self, level_func: Callable, msg: str):
+        level_func(f"[_MAIN_] " + msg)
 
 '''
-    usage : python main.py LOCALHOST_PORT WALLET_SALT [PEER_PORT ...]
+    usage : python main.py
 '''
 if __name__ == "__main__":
-    if (len(sys.argv) < 2):
-        print(f"Usage : {sys.argv[0]} LOCALHOST_PORT WALLET_SALT [PEER_PORT ...]")
-        exit(1)
-
-    node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(sys.argv[0] + sys.argv[2]), server_address=("127.0.0.1", int(sys.argv[1])))
-    json_save_file = node.wallet.address + ".json"
-
-    node.blockchain.loadFromJSON(json_save_file, True)
-    if (len(sys.argv) > 3):
-        for port in sys.argv[3:]:
-            if node.client.connect(("127.0.0.1", int(port))):
-                print(f'[+] Connected to localhost:{port}')
-    t = Thread(target=node.serve_forever).start()
-    print(f"[*] FullNode (wallet: {node.wallet.address}) listening on localhost:{sys.argv[1]}...")
+    file_handler = logging.FileHandler(app_dir / "simulation.log", mode='w')
     
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    logging.basicConfig(
+        handlers=[file_handler, console_handler], 
+        level=logging.DEBUG, 
+        format='T+%(relativeCreated)d\t%(levelname)s %(message)s'
+    )
+
+    logging.addLevelName(logging.DEBUG, '[DEBUG]')
+    logging.addLevelName(logging.INFO, '[*]')
+    logging.addLevelName(logging.WARNING, '[!]')
+    logging.addLevelName(logging.ERROR, '[ERROR]')
+    logging.addLevelName(logging.CRITICAL, '[CRITICAL]')
+
+    simulation = Orchestrator()
+    simulation.start()
+
     run = True
     while run:
         user_input = ""
-        while (user_input not in ['q', 'm', 'Q', 'M','s','S']):
-            user_input = input("[x] Press m to start mining a new block, s to sync with other peers or q to quit :\n")
+        while (user_input not in ['q', 'a', 'Q', 'A']):
+            user_input = input()
+
         if (user_input == 'q' or user_input == 'Q'):
             run = False
-        else:
-            if user_input == 's' or user_input == 'S':
-                node.sync_with_peers()
-                b = node.blockchain.lastBlock
-                print(f"[+] Synced with peers, last block added is #{b.height} (hash: {b.getHash()}) !")
-            else:
-                node.mineNewBlock()
-                b = node.blockchain.lastBlock
-                print(f"[+] Mined block #{b.height} (hash: {b.getHash()}) !")
+        elif (user_input == 'a' or user_input == 'A'):
+            simulation.addNode()
+            logging.info(f"Added new node")
 
-    node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
-    node.shutdown()
-    node.blockchain.saveToJSON(json_save_file, True)
+    simulation.isRunning = False

@@ -7,6 +7,9 @@ _trial_temp/
 # C extensions
 *.so
 
+# Generated .json for wallets
+app/wallets
+
 # Sublime text project
 *.sublime*
 

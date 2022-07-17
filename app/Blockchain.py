@@ -1,9 +1,11 @@
+import logging
 import time
 import json
+import os
 from typing import Union
 
-from Block import *
-from TransactionStore import *
+from app.Block import *
+from app.TransactionStore import *
 
 class Blockchain:
     def __init__(self):
@@ -40,7 +42,7 @@ class Blockchain:
                         self.blockChain = []
                         lastSavedBlockHeight = -1
                     elif (data['lastBlockHeight'] <= self.lastBlock.height):
-                        print("[-] Loading aborted: current blockchain is longer than previously saved blockchain (set overwrite=True to force load)")
+                        logging.info("Loading aborted: current blockchain is longer than previously saved blockchain (set overwrite=True to force load) [failure]")
                         return False
 
                     for block in data['blocks']:
@@ -51,21 +53,23 @@ class Blockchain:
 
                     lastUpdated = data['savedTime']
                 except Exception as e:
-                    print(f"[ERROR] Could not load save file: ", e)
+                    logging.error(f"Could not load save file: {e}")
                     return False
         except FileNotFoundError:
-            print(f"[ERROR] File '{file}' does not exists !")
+            logging.error(f"File '{file}' does not exists !")
             return False
         except Exception as e:
-            print(f"[ERROR] Exception caught : {e}")
+            logging.error(f"Exception caught : {e}")
             return False
 
-        print(f"[+] Successfully loaded {countUpdated} blocks from '{file}' (last updated {lastUpdated})")
+        logging.info(f"Successfully loaded {countUpdated} blocks from '{file}' (last updated {lastUpdated}) [success]")
         return True
 
     def saveToJSON(self, file: Union[str, bytes], overwrite=False) -> bool:
         blockchain = {} # JSON object to save blockchain data
         lastSavedBlockHeight = -1 # Allow inclusion of genesis block with height=0
+        if (os.path.dirname(file)): # Create directory for file if needed
+            os.makedirs(os.path.dirname(file), exist_ok=True)
         with open(file, 'a+') as f: # 'a+' enables reading AND writing to file AND create it if it does not yet exists
             blockchain['blocks'] = []
 
@@ -74,7 +78,7 @@ class Blockchain:
                 try:
                     data = json.loads(f.read())
                     if (data['lastBlockHeight'] > self.lastBlock.height):
-                        print("[-] Saving aborted: previously saved blockchain is longer than current blockchain (set overwrite=True to force save)")
+                        logging.info("Saving aborted: previously saved blockchain is longer than current blockchain (set overwrite=True to force save) [failure]")
                         return False
 
                     # Add previously saved blocks to the new save file
@@ -83,9 +87,9 @@ class Blockchain:
                     for block in previousBlocks:
                         blockchain['blocks'].append(json.loads(block))
                 except FileNotFoundError:
-                    print(f"[!] File not found, creating new file...")
+                    logging.warning(f"File not found, creating new file...")
                 except Exception as e:
-                    print(f"[ERROR] Exception caught : {e}")
+                    logging.error(f"Exception caught : {e}")
                     return False
 
             for block in self.blockChain:
@@ -98,5 +102,5 @@ class Blockchain:
             f.truncate(0) # Erase file content
             f.write(json.dumps(blockchain))
 
-        print(f"[+] Successfully saved {len(self.blockChain)} blocks to '{file}' !")
+        logging.info(f"Successfully saved {len(self.blockChain)} blocks to '{file}' [success]")
         return True

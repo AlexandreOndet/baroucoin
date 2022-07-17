@@ -2,8 +2,8 @@ import unittest
 import time
 from pathlib import Path
 
-from Block import *
-from Blockchain import *
+from app.Block import *
+from app.Blockchain import *
 
 class FilesTests(unittest.TestCase):
     @classmethod
@@ -43,6 +43,12 @@ class FilesTests(unittest.TestCase):
                 f"File did not get updated : last_updated={last_updated}, savedTime={json_data['savedTime']}")
             self.assertEqual(len(self.blockchain.blockChain), len(json_data['blocks']), 
                 f"Saved blockchain is not the same length as updated blockchain : updated={len(self.blockchain.blockChain)}, json={len(json_data['blocks'])}")
+
+    def test_blockchain_save_json_to_folder(self):
+        self.assertTrue(self.blockchain.saveToJSON("sub/folder/" + self.json_filename, overwrite=True))
+        Path("sub/folder/" + self.json_filename).unlink()
+        Path("sub/folder").rmdir()
+        Path("sub").rmdir()
 
     '''
         Verifies a shorter blockchain is not saved without setting overwrite=True
@@ -97,7 +103,7 @@ class FilesTests(unittest.TestCase):
             f"File did not get loaded with overwrite=True")
 
     def tearDown(self):
-        Path(self.json_filename).unlink() # Delete file after each test
+        Path(self.json_filename).unlink(missing_ok=True) # Delete file after each test
 
     def _generate_block(self, startingBlock: Block) -> Block:
         lastBlock = startingBlock

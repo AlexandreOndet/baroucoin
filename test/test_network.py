@@ -2,8 +2,8 @@ import unittest
 import warnings
 
 
-from FullNode import *
-from TCPClient import *
+from app.FullNode import *
+from app.TCPClient import *
 
 class NetworkTests(unittest.TestCase):
     @classmethod

@@ -2,7 +2,7 @@ from __future__ import annotations # Allows for using class type hinting within 
 import hashlib as h
 import json
 
-from TransactionStore import *
+from app.TransactionStore import *
 
 class Block:
     def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: bool,
