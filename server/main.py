@@ -1,8 +1,7 @@
-from typing import Set, Dict, Any
+from typing import Any
 import os
 from fastapi import FastAPI, Request
 import json
-import time
 import requests
 
 blockchain = FastAPI()
@@ -63,13 +62,13 @@ async def new_peer(request: Request) -> dict:
     if peer_host == "127.0.0.1":
         address = f"{server_address}"
     else:
-        address = f"http://{peer_host}:{peer_port}"
+        address = f"{peer_host}:{peer_port}"
     print(address)
     with open(PEERS_JSON_PATH, "r") as f:
         data = json.loads(f.read())
     if address in data:
         return {"Following address is already registered as a node": address}
-    data[peer_host] = peer_port
+    data.append(address)
     with open(PEERS_JSON_PATH, 'w') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
     return {"registeredFrom": address, "peers": data}

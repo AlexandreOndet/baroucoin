@@ -29,15 +29,19 @@ if __name__ == "__main__":
     run = True
     while run:
         user_input = ""
-        while (user_input not in ['q', 'm', 'Q', 'M']):
-            user_input = input("[x] Press m to start mining a new block or q to quit :\n")
-
+        while (user_input not in ['q', 'm', 'Q', 'M','s','S']):
+            user_input = input("[x] Press m to start mining a new block, s to sync with other peers or q to quit :\n")
         if (user_input == 'q' or user_input == 'Q'):
             run = False
         else:
-            node.mineNewBlock()
-            b = node.blockchain.lastBlock
-            print(f"[+] Mined block #{b.height} (hash: {b.getHash()}) !")
+            if user_input == 's' or user_input == 'S':
+                node.sync_with_peers()
+                b = node.blockchain.lastBlock
+                print(f"[+] Synced with peers, last block added is #{b.height} (hash: {b.getHash()}) !")
+            else:
+                node.mineNewBlock()
+                b = node.blockchain.lastBlock
+                print(f"[+] Mined block #{b.height} (hash: {b.getHash()}) !")
 
     node.client.broadcast({'end': node.server_address}) # Informs other peers to close the connection
     node.shutdown()

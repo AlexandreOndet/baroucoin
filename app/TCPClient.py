@@ -6,6 +6,10 @@ import os
 
 from utils import get_public_ip, get_all_peers
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 PEERS_JSON_PATH = os.getenv("PEERS_JSON_PATH")
 DNS_SERVER_IP = os.getenv("DNS_SERVER_IP")
 
@@ -16,7 +20,7 @@ class TCPClient(object):
     def __init__(self, server_addr):
         super(TCPClient, self).__init__()
         self.peers = {}  # Key : (HOST, PORT) / Value : socket representing the peer connection
-        # self.register_to_dns_and_fetch_peers()
+        self.register_to_dns_and_fetch_peers()
         self.server_addr = server_addr
 
     def register_to_dns_and_fetch_peers(self):
@@ -24,14 +28,17 @@ class TCPClient(object):
         Register this client as a full node on DNS and get all peers registered to join the network
         """
         # Starts by asking a DNS server for peers list
-        peers_response = requests.get(DNS_SERVER_IP + "/peers")
+        peers_response = requests.get(DNS_SERVER_IP + "/new-peer")
         print(peers_response)
         myIp = get_public_ip()
-        if peers_response["registeredFrom"] == myIp:
+        response_json = peers_response.json()
+        print(response_json)
+        if response_json["registeredFrom"] == myIp:
             peers = peers_response["peers"]
             with open(PEERS_JSON_PATH, 'w') as f:
                 json.dump(peers, f, ensure_ascii=False, indent=4)
-            self.peers = peers
+            for peer in peers:
+                self.peers[peer] = None # Socket will be instanced later in connect method
 
     def send_data_to_peer(self, data, peer):
         if peer in self.peers:

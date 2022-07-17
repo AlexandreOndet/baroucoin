@@ -1,4 +1,4 @@
 requests
-cryptography>=37.0.2
+cryptography==37.0.4
 base58>=2.1.1
-dotenv
+python-dotenv

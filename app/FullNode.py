@@ -40,9 +40,9 @@ class FullNode(socketserver.ThreadingTCPServer):
 
     def sync_with_peers(self):
         latest_local_block_hash = self.blockchain.lastBlock.getHash()
-        self.client.broadcast(json.dumps({
+        self.client.broadcast({
             "getLastBlock": latest_local_block_hash
-        }))
+        })
 
     def send_last_block(self, peer_address):
         latest_local_block = self.blockchain.lastBlock

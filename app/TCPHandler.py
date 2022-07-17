@@ -34,6 +34,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def getLastBlock(self, data):
         peer_adress = self.client_address
+        print(f"Received getLastBlock request from {peer_adress}")
         receivedLastBlockHash = data["getLastBlock"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             self.fullnode.send_last_block(peer_adress)
