@@ -1,11 +1,8 @@
 import logging
 import random
-import sys
-import time
 from dotenv import load_dotenv
 from pathlib import Path
 from threading import Thread
-from typing import Callable
 
 from app.FullNode import *
 
