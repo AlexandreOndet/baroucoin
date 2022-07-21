@@ -18,7 +18,6 @@ app/wallets
 
 # JSON files except common ones
 *.json
-!app/transaction_loop.json
 
 # Distribution / packaging
 .Python
