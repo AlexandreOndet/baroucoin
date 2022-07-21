@@ -84,9 +84,9 @@ class TCPClient(object):
 
     def broadcast(self,
                   data):  # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
-        for (peer, sock) in self.peers.items():
+        for (peer, sock) in list(self.peers.items()):
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
-            except Exception as e:
-                logging.error(f"broadcasting: {e}")
+            except BrokenPipeError as e:
+                logging.error(f"broadcasting: broken pipe to {peer}")
                 pass  # TODO : Handle send exception

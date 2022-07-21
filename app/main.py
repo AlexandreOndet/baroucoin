@@ -39,6 +39,10 @@ class Orchestrator(Thread):
 
     def run(self):
         while self.isRunning:
+            # pick a random node and sync it with the others
+            chosen_sync_node = random.choice(self.nodes)
+            chosen_sync_node.sync_with_peers()
+
             if (random.randint(1, 10) <= self.transactionFrequency):
                 chosenNode = random.choice(self.nodes)
                 chosenNode.addToTransactionPool(next(self.transactions))
