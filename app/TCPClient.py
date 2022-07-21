@@ -53,17 +53,6 @@ class TCPClient(object):
                 print("[ERROR] send: ", e)
                 pass  # TODO : Handle send exception
 
-    def answer_getLastBlock(self, peer_ip, localLastBlockHash):
-        sock = self.peers[peer_ip]
-        data = {
-            "lastBlock": localLastBlockHash
-        }
-        try:
-            sock.send(json.dumps(data).encode('utf-8'))
-        except Exception as e:
-            print("[ERROR] send: ", e)
-            pass  # TODO : Handle send exception
-
     def connect(self, peer: Tuple[str, int]) -> bool:
         str_peer = f"{peer[0]}:{peer[1]}"
         if str_peer in self.peers.keys():  # Prevent connecting back to already connected peers
@@ -73,7 +62,7 @@ class TCPClient(object):
         try:
             sock.connect(peer)
             self.peers[str_peer] = sock
-            sock.send(json.dumps({'connect': self.server_addr, 'peers': self.peers}).encode(
+            sock.send(json.dumps({'connect': self.server_addr, 'peers': list(self.peers.keys())}).encode(
                 'utf-8'))  # Sends server listening port for the remote peer to connect
         except Exception as e:
             logging.error(f"connect: {e}")
@@ -99,5 +88,5 @@ class TCPClient(object):
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
             except Exception as e:
-                logging.error(f"send: {e}")
+                logging.error(f"broadcasting: {e}")
                 pass  # TODO : Handle send exception

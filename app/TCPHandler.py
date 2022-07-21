@@ -33,7 +33,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def getLastBlock(self, data):
         peer_adress = self.client_address
-        print(f"Received getLastBlock request from {peer_adress}")
+        self._log(logging.info, f"Received getLastBlock request from {peer_adress}")
         receivedLastBlockHash = data["getLastBlock"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             self.fullnode.send_last_block(peer_adress)
@@ -55,7 +55,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         received_block_height = data["block_height"]
         block = Block.fromJSON(data)
         if (self.fullnode.validateNewBlock(block) and block.height == received_block_height):
-            print(f"[+] Received and validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
+            self._log(logging.info, f"[+] Received and validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
             self.fullnode.blockchain.blockchain[received_block_height] = block
 
     def parseJSON(self, data: dict) -> bool:
