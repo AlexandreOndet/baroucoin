@@ -24,7 +24,6 @@ app/node_neighbors.json
 
 # JSON files except common ones
 *.json
-!app/transaction_loop.json
 
 # Distribution / packaging
 .Python
