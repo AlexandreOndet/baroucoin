@@ -88,5 +88,6 @@ class TCPClient(object):
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
             except BrokenPipeError as e:
-                logging.error(f"broadcasting: broken pipe to {peer}")
-                pass  # TODO : Handle send exception
+                logging.error(f"broadcasting: {e} to {peer}")
+            except Exception as e:
+                logging.error(f"Unexpected error during broadcasting: {e}")

@@ -10,6 +10,12 @@ _trial_temp/
 # Generated .json for wallets
 app/wallets
 
+# Server peers.json
+server/peers.json
+
+# Node's neighbors.json
+app/node_neighbors.json
+
 # Sublime text project
 *.sublime*
 

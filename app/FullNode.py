@@ -40,24 +40,26 @@ class FullNode(socketserver.ThreadingTCPServer):
     def sync_with_peers(self):
         latest_local_block_hash = self.blockchain.lastBlock.getHash()
         self.client.broadcast({
-            "getLastBlock": latest_local_block_hash
+            "getLastBlock": json.dumps({"latestBlockHash": latest_local_block_hash})
         })
 
     def send_last_block(self, peer_address):
         latest_local_block = self.blockchain.lastBlock
-        data = {"receiveMyLastBlock": latest_local_block.getHash(), "lastBlockHeight": latest_local_block.height}
+        data = {"receiveMyLastBlock": json.dumps({"latestBlockHash": latest_local_block.getHash(),
+                                                  "lastBlockHeight": latest_local_block.height})}
+        logging.debug(f"Sending last known block to {peer_address}")
         self.client.send_data_to_peer(data, peer_address)
 
     def ask_inventory(self, peer_address, receivedLatestBlockHash, receivedLatestBlockHeight):
         latest_local_block = self.blockchain.lastBlock
-        data = {"askingForInventory": "", "from": latest_local_block.height, "to": receivedLatestBlockHeight}
+        data = {"askingForInventory": json.dumps({"from": latest_local_block.height, "to": receivedLatestBlockHeight})}
         self.client.send_data_to_peer(data, peer_address)
 
     def returnInventory(self, peer_address, from_height, to_height):
         for block_height in range(from_height, to_height, 1):
             block = self.blockchain.blockChain[block_height]
             # Sending block per block to avoid going above buffer size of recv in TCPHandler
-            data = {"returnInventory": "", "block_height": block_height, "block_json": block}
+            data = {"returnInventory": json.dumps({"block_height": block_height, "block_json": block})}
             self.client.send_data_to_peer(data, peer_address)
 
     def __del__(self):

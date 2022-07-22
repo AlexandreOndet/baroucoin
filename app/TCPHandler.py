@@ -29,6 +29,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
                           f"Received {len(data)} bytes from {self.client_address} :\n{json.dumps(json_payload, indent=4, sort_keys=True)}\n")
                 keep_alive = self.parseJSON(json_payload)
             except Exception as e:
+                self._log(logging.error, f"Exception in TCPHandler {e}"
+                                         f" With data : {json_payload}")
                 keep_alive = False
 
         self.request.close()
@@ -36,17 +38,19 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def getLastBlock(self, data):
         peer_adress = self.client_address
-        self._log(logging.info, f"Received getLastBlock request from {peer_adress}")
-        receivedLastBlockHash = data["getLastBlock"]
+        self._log(logging.debug, f"Received getLastBlock request from {peer_adress} with data : {data}")
+        data = json.loads(data)
+        receivedLastBlockHash = data["latestBlockHash"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             self.fullnode.send_last_block(peer_adress)
 
     def receiveMyLastBlock(self, data):
-        receivedLastBlockHash = data["receiveMyLastBlock"]
+        self._log(logging.debug, f"[+] Received 'receiveMyLastBlock' request, checking if different from current block")
+        receivedLastBlockHash = data["latestBlockHash"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             peer_adress = self.client_address
             receivedLastBlockHeight = data["lastBlockHeight"]
-            self._log(logging.info, f"[+] Received 'receiveMyLastBlock' request, now asking for inventory")
+            self._log(logging.info, f"[+] Asking for inventory")
             self.fullnode.ask_inventory(peer_adress, receivedLastBlockHash, receivedLastBlockHeight)
 
     def askingForInventory(self, data):
@@ -58,7 +62,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def returnInventory(self, data):
         received_block_height = data["block_height"]
-        block = Block.fromJSON(data)
+        block = Block.fromJSON(data["block_json"])
         if (self.fullnode.validateNewBlock(block) and block.height == received_block_height):
             self._log(logging.info,
                       f"[+] Received and validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
@@ -80,7 +84,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         return True
 
     def newBlock(self, data) -> bool:
-        data = json.loads(data);  # TODO : Add deserialization checks
+        data = json.loads(data)  # TODO : Add deserialization checks
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
         block = Block.fromJSON(data)
         if (self.fullnode.validateNewBlock(block)):
