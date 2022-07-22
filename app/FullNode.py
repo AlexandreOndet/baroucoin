@@ -60,8 +60,9 @@ class FullNode(socketserver.ThreadingTCPServer):
         logging.debug(f"Sending to {peer_address} inventory with blocks from {from_height} to {to_height} height")
         for block_height in range(from_height, to_height, 1):
             block = self.blockchain.blockChain[block_height]
+            block_json = block.toJSON()
             # Sending block per block to avoid going above buffer size of recv in TCPHandler
-            data = {"returnInventory": json.dumps({"block_height": block_height, "block_json": block})}
+            data = {"returnInventory": json.dumps({"block_height": block_height, "block_json": block_json})}
             self.client.send_data_to_peer(data, peer_address)
 
     def __del__(self):

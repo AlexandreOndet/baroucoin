@@ -67,11 +67,12 @@ class TCPHandler(socketserver.BaseRequestHandler):
 
     def returnInventory(self, data, sender_address):
         data = json.loads(data)
+        self._log(logging.info, f"[+] Received inventory")
         received_block_height = data["block_height"]
         block = Block.fromJSON(data["block_json"])
         if (self.fullnode.validateNewBlock(block) and block.height == received_block_height):
             self._log(logging.info,
-                      f"[+] Received and validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
+                      f"[+] Validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
             self.fullnode.blockchain.blockchain[received_block_height] = block
         return True
 
