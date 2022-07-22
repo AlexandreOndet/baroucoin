@@ -50,8 +50,7 @@ class TCPClient(object):
             try:
                 sock.send(json.dumps(data).encode('utf-8'))
             except Exception as e:
-                print("[ERROR] send: ", e)
-                pass  # TODO : Handle send exception
+                logging.exception(f" In send_data_to_peer : {e}")
 
     def connect(self, peer: Tuple[str, int]) -> bool:
         str_peer = f"{peer[0]}:{peer[1]}"

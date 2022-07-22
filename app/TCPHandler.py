@@ -20,17 +20,17 @@ class TCPHandler(socketserver.BaseRequestHandler):
         keep_alive = True
 
         while (keep_alive):
-            data = self.request.recv(4096)  # TODO : Fix in case payload gets bigger than 4Kb
-
-            text = data.decode("utf-8")
             try:
+                data = self.request.recv(4096)  # TODO : Fix in case payload gets bigger than 4Kb
+
+                text = data.decode("utf-8")
+
                 json_payload = json.loads(text)  # TODO : Handle exceptions
                 self._log(logging.debug,
                           f"Received {len(data)} bytes from {self.client_address} :\n{json.dumps(json_payload, indent=4, sort_keys=True)}\n")
                 keep_alive = self.parseJSON(json_payload)
             except Exception as e:
-                self._log(logging.error, f"Exception in TCPHandler {e}"
-                                         f" With data : {json_payload}")
+                self._log(logging.error, f"Exception in TCPHandler {e}")
                 keep_alive = False
 
         self.request.close()
@@ -39,34 +39,44 @@ class TCPHandler(socketserver.BaseRequestHandler):
     def getLastBlock(self, data):
         peer_adress = self.client_address
         self._log(logging.debug, f"Received getLastBlock request from {peer_adress} with data : {data}")
-        data = json.loads(data)
-        receivedLastBlockHash = data["latestBlockHash"]
+        try:
+            data = json.loads(data)
+            receivedLastBlockHash = data["latestBlockHash"]
+        except Exception as e:
+            logging.error(e)
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             self.fullnode.send_last_block(peer_adress)
+        return True
 
     def receiveMyLastBlock(self, data):
         self._log(logging.debug, f"[+] Received 'receiveMyLastBlock' request, checking if different from current block")
+        data = json.loads(data)
         receivedLastBlockHash = data["latestBlockHash"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             peer_adress = self.client_address
             receivedLastBlockHeight = data["lastBlockHeight"]
             self._log(logging.info, f"[+] Asking for inventory")
             self.fullnode.ask_inventory(peer_adress, receivedLastBlockHash, receivedLastBlockHeight)
+        return True
 
     def askingForInventory(self, data):
         peer_address = self.client_address
+        data = json.loads(data)
         from_height = data["from"]
         to_height = data["to"]
         self._log(logging.info, f"[+] Asked to send inventory from {from_height} to {to_height} height")
         self.fullnode.returnInventory(peer_address, from_height, to_height)
+        return True
 
     def returnInventory(self, data):
+        data = json.loads(data)
         received_block_height = data["block_height"]
         block = Block.fromJSON(data["block_json"])
         if (self.fullnode.validateNewBlock(block) and block.height == received_block_height):
             self._log(logging.info,
                       f"[+] Received and validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
             self.fullnode.blockchain.blockchain[received_block_height] = block
+        return True
 
     def parseJSON(self, data: dict) -> bool:
         for method in list(data.keys()):
@@ -80,7 +90,6 @@ class TCPHandler(socketserver.BaseRequestHandler):
             self._log(logging.info, f"Connected back to {server_address} [success]")
         else:
             self._log(logging.warning, f"Already connected to {server_address}")
-
         return True
 
     def newBlock(self, data) -> bool:
