@@ -36,31 +36,28 @@ class TCPHandler(socketserver.BaseRequestHandler):
         self.request.close()
         self._log(logging.info, f"Closed connection with {self.client_address} [success]")
 
-    def getLastBlock(self, data):
-        peer_adress = self.client_address
+    def getLastBlock(self, data, sender_address):
+        peer_adress = sender_address  # self.client_address
         self._log(logging.debug, f"Received getLastBlock request from {peer_adress} with data : {data}")
-        try:
-            data = json.loads(data)
-            receivedLastBlockHash = data["latestBlockHash"]
-        except Exception as e:
-            logging.error(e)
+        data = json.loads(data)
+        receivedLastBlockHash = data["latestBlockHash"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
             self.fullnode.send_last_block(peer_adress)
         return True
 
-    def receiveMyLastBlock(self, data):
+    def receiveMyLastBlock(self, data, sender_address):
         self._log(logging.debug, f"[+] Received 'receiveMyLastBlock' request, checking if different from current block")
         data = json.loads(data)
         receivedLastBlockHash = data["latestBlockHash"]
         if receivedLastBlockHash != self.fullnode.blockchain.lastBlock.getHash():
-            peer_adress = self.client_address
+            peer_adress = sender_address  # self.client_address
             receivedLastBlockHeight = data["lastBlockHeight"]
             self._log(logging.info, f"[+] Asking for inventory")
             self.fullnode.ask_inventory(peer_adress, receivedLastBlockHash, receivedLastBlockHeight)
         return True
 
-    def askingForInventory(self, data):
-        peer_address = self.client_address
+    def askingForInventory(self, data, sender_address):
+        peer_address = sender_address  # self.client_address
         data = json.loads(data)
         from_height = data["from"]
         to_height = data["to"]
@@ -68,7 +65,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
         self.fullnode.returnInventory(peer_address, from_height, to_height)
         return True
 
-    def returnInventory(self, data):
+    def returnInventory(self, data, sender_address):
         data = json.loads(data)
         received_block_height = data["block_height"]
         block = Block.fromJSON(data["block_json"])
@@ -82,9 +79,9 @@ class TCPHandler(socketserver.BaseRequestHandler):
         for method in list(data.keys()):
             if (method in self.whitelistedFunctions):
                 # TODO : See if general deserialization approach is feasible and handle exception on method not found
-                return getattr(self, method)(data[method])
+                return getattr(self, method)(data[method], data["sender_address"])
 
-    def connect(self, data) -> bool:
+    def connect(self, data, sender_address) -> bool:
         server_address = tuple(data)  # TODO : Add deserialization checks
         if (self.fullnode.client.connect(server_address)):
             self._log(logging.info, f"Connected back to {server_address} [success]")
@@ -92,7 +89,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
             self._log(logging.warning, f"Already connected to {server_address}")
         return True
 
-    def newBlock(self, data) -> bool:
+    def newBlock(self, data, sender_address) -> bool:
         data = json.loads(data)  # TODO : Add deserialization checks
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
         block = Block.fromJSON(data)
@@ -104,7 +101,7 @@ class TCPHandler(socketserver.BaseRequestHandler):
                       f"Block #{block.height} invalid: hash={block.getHash()}, lastBlock.height={self.fullnode.blockchain.lastBlock.height}")
         return True
 
-    def end(self, data) -> bool:
+    def end(self, data, sender_address) -> bool:
         server_address = tuple(data)  # TODO : Add deserialization checks
         self._log(logging.info, f"Received disconnect request from {server_address}")
         self.fullnode.client.disconnect(server_address)  # Disconnects but do not remove the peer from the peers list

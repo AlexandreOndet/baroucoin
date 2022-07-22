@@ -44,13 +44,18 @@ class TCPClient(object):
             for peer in peers:
                 self.peers[peer] = None  # Socket will be instanced later in connect method
 
-    def send_data_to_peer(self, data, peer):
-        if peer in self.peers:
-            sock = self.peers[peer]
+    def send_data_to_peer(self, data, peer: Tuple[str, int]):
+        logging.debug(f"Trying to send {data} to {peer}")
+        str_peer = f"{peer[0]}:{peer[1]}"
+        if str_peer in self.peers:
+            sock = self.peers[str_peer]
             try:
+                data["sender_address"] = self.server_addr
                 sock.send(json.dumps(data).encode('utf-8'))
             except Exception as e:
-                logging.exception(f" In send_data_to_peer : {e}")
+                logging.error(f" In send_data_to_peer : {e}")
+        else:
+            logging.error(f" TCPClient : Could not find {str_peer} in {self.peers} ")
 
     def connect(self, peer: Tuple[str, int]) -> bool:
         str_peer = f"{peer[0]}:{peer[1]}"
@@ -61,8 +66,8 @@ class TCPClient(object):
         try:
             sock.connect(peer)
             self.peers[str_peer] = sock
-            sock.send(json.dumps({'connect': self.server_addr, 'peers': list(self.peers.keys())}).encode(
-                'utf-8'))  # Sends server listening port for the remote peer to connect
+            data = {'connect': self.server_addr, 'peers': list(self.peers.keys()), "sender_address": self.server_addr}
+            sock.send(json.dumps(data).encode('utf-8'))  # Sends server listening port for the remote peer to connect
         except Exception as e:
             logging.error(f"connect: {e}")
             return False  # TODO : Handle connect exception
@@ -85,6 +90,7 @@ class TCPClient(object):
                   data):  # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
         for (peer, sock) in list(self.peers.items()):
             try:
+                data["sender_address"] = self.server_addr
                 sock.send(json.dumps(data).encode('utf-8'))
             except BrokenPipeError as e:
                 logging.error(f"broadcasting: {e} to {peer}")
