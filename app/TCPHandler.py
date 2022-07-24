@@ -1,6 +1,5 @@
 import logging
 import socketserver
-import json
 from typing import Callable
 
 from app.Block import *
@@ -69,7 +68,8 @@ class TCPHandler(socketserver.BaseRequestHandler):
         data = json.loads(data)
         self._log(logging.info, f"[+] Received inventory")
         received_block_height = data["block_height"]
-        block = Block.fromJSON(data["block_json"])
+        block_json_obj = json.loads(data["block_json"])
+        block = Block.fromJSON(block_json_obj)
         if (self.fullnode.validateNewBlock(block) and block.height == received_block_height):
             self._log(logging.info,
                       f"[+] Validated new block from inventory #{block.height} (hash: {block.getHash()}) !")
