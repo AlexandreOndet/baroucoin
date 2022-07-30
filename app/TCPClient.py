@@ -20,8 +20,8 @@ class TCPClient(object):
         super(TCPClient, self).__init__()
         self.peers = {}  # Key : (HOST, PORT) / Value : socket representing the peer connection
         self.server_addr = server_addr
-        self.register_to_dns_and_fetch_peers()
-        self.connect_to_all_peers()
+        # self.register_to_dns_and_fetch_peers()
+        # self.connect_to_all_peers()
 
     def connect_to_all_peers(self):
         for peer in self.peers.keys():
@@ -50,7 +50,6 @@ class TCPClient(object):
         if str_peer in self.peers:
             sock = self.peers[str_peer]
             try:
-                data["sender_address"] = self.server_addr
                 sock.send(json.dumps(data).encode('utf-8'))
             except Exception as e:
                 logging.error(f" In send_data_to_peer : {e}")
@@ -59,14 +58,14 @@ class TCPClient(object):
 
     def connect(self, peer: Tuple[str, int]) -> bool:
         str_peer = f"{peer[0]}:{peer[1]}"
-        if str_peer in self.peers.keys():  # Prevent connecting back to already connected peers
+        if str_peer in self.peers:  # Prevent connecting back to already connected peers
             return False
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             sock.connect(peer)
             self.peers[str_peer] = sock
-            data = {'connect': self.server_addr, 'peers': list(self.peers.keys()), "sender_address": self.server_addr}
+            data = {'connect': {'server_address': self.server_addr, 'peers': list(self.peers.keys())}}
             sock.send(json.dumps(data).encode('utf-8'))  # Sends server listening port for the remote peer to connect
         except Exception as e:
             logging.error(f"connect: {e}")
@@ -76,6 +75,9 @@ class TCPClient(object):
 
     def disconnect(self, peer: Tuple[str, int], clear=False) -> bool:
         str_peer = f"{peer[0]}:{peer[1]}"
+        if not str_peer in self.peers:
+            return False
+
         try:
             self.peers[str_peer].close()
         except Exception as e:
@@ -90,7 +92,6 @@ class TCPClient(object):
                   data):  # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
         for (peer, sock) in list(self.peers.items()):
             try:
-                data["sender_address"] = self.server_addr
                 sock.send(json.dumps(data).encode('utf-8'))
             except BrokenPipeError as e:
                 logging.error(f"broadcasting: {e} to {peer}")

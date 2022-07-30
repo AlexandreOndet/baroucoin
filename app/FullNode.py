@@ -34,36 +34,9 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.consensusAlgorithm = ProofOfWork(
             1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
+        self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
         self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
         self.transaction_pool = []
-
-    def sync_with_peers(self):
-        latest_local_block_hash = self.blockchain.lastBlock.getHash()
-        self.client.broadcast({
-            "getLastBlock": json.dumps({"latestBlockHash": latest_local_block_hash})
-        })
-
-    def send_last_block(self, peer_address):
-        latest_local_block = self.blockchain.lastBlock
-        data = {"receiveMyLastBlock": json.dumps({"latestBlockHash": latest_local_block.getHash(),
-                                                  "lastBlockHeight": latest_local_block.height})}
-        #logging.debug(f"Sending last known block to {peer_address}")
-        self.client.send_data_to_peer(data, peer_address)
-
-    def ask_inventory(self, peer_address, receivedLatestBlockHash, receivedLatestBlockHeight):
-        logging.debug(f"Asking {peer_address} for inventory")
-        latest_local_block = self.blockchain.lastBlock
-        data = {"askingForInventory": json.dumps({"from": latest_local_block.height, "to": receivedLatestBlockHeight})}
-        self.client.send_data_to_peer(data, peer_address)
-
-    def returnInventory(self, peer_address, from_height, to_height):
-        logging.debug(f"Sending to {peer_address} inventory with blocks from {from_height} to {to_height} height")
-        for block_height in range(from_height, to_height, 1):
-            block = self.blockchain.blockChain[block_height]
-            block_json = block.toJSON()
-            # Sending block per block to avoid going above buffer size of recv in TCPHandler
-            data = {"returnInventory": json.dumps({"block_height": block_height, "block_json": block_json})}
-            self.client.send_data_to_peer(data, peer_address)
 
     def __del__(self):
         self.server_close()
@@ -140,3 +113,119 @@ class FullNode(socketserver.ThreadingTCPServer):
 
         return all(
             [self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
+
+    def syncWithPeers(self):
+        # TODO : Start a thread for syncing and prevent mining blocks / retry sync after timeout or packet loss
+        self._log(logging.info, f"Starting sync with peers...")
+        self.syncBlockHeightReceivedFromPeer = {k: 0 for k in self.peers_server.keys()}
+        self.client.broadcast({
+            "getLastBlock": {"latestBlockHeight": self.blockchain.lastBlock.height}
+        })
+
+    def RPC_getLastBlock(self, data, client_addr):
+        peer = self.peers_server[client_addr]
+        lastBlockHeight = self.blockchain.lastBlock.height
+
+        self._log(logging.debug, f"Received 'getLastBlock' request from {peer} with data : {data}")
+        if (data["latestBlockHeight"] < lastBlockHeight):
+            data = {'listLastBlocks': {'lastBlockHeight': lastBlockHeight}}
+            
+            self._log(logging.debug, f"Sending block height {lastBlockHeight} to {peer}")
+            self.client.send_data_to_peer(data, peer) # TODO : check return data
+
+        return True
+
+    def RPC_listLastBlocks(self, data, client_addr):
+        peer = self.peers_server[client_addr]
+        self.syncBlockHeightReceivedFromPeer[client_addr] = data['lastBlockHeight']
+        
+        self._log(logging.debug, f"Received block height {data['lastBlockHeight']} from {peer}")
+        if (len(self.syncBlockHeightReceivedFromPeer) == len(self.peers_server.keys())):
+            self._log(logging.debug, f"Got all block heights from peers: {self.syncBlockHeightReceivedFromPeer}")
+
+            # Getting peer with highest returned block height and storing both the address and block height received for checking in updateInventory request
+            self.chosen_peer = max(self.syncBlockHeightReceivedFromPeer, key=self.syncBlockHeightReceivedFromPeer.get)
+            self.sync_height = self.syncBlockHeightReceivedFromPeer[self.chosen_peer]
+            peer = self.peers_server[self.chosen_peer]
+
+            self._log(logging.debug, f"Sending 'getInventory' request to {peer}")
+            self.client.send_data_to_peer({'getInventory': {'toHeight': self.sync_height}}, peer)
+
+        return True
+
+    def RPC_getInventory(self, data, client_addr):
+        peer = self.peers_server[client_addr]
+        to_height = data['toHeight']
+
+        self._log(logging.debug, f"Received 'getInventory' request from {peer} with data : {data}")
+        if (to_height > 0 and to_height <= self.blockchain.lastBlock.height):
+            data = {'updateInventory': []}
+            for block in self.blockchain.blockChain[1:to_height+1]: # All nodes have same genesis block so start at #1
+                data['updateInventory'].append(block.toJSON())
+
+            self._log(logging.debug, f"Sending inventory to {peer}")
+            self.client.send_data_to_peer(data, peer)
+
+        return True
+
+    def RPC_updateInventory(self, data, client_addr):
+        if (client_addr == self.chosen_peer): # Peer verification
+            blocks = data
+            if (len(blocks) == (self.sync_height - self.blockchain.lastBlock.height)):
+                original_chain = self.blockchain.blockChain
+                for json_block in [json.loads(b) for b in blocks]:
+                    json_block['transactionStore'] = TransactionStore.fromJSON(json_block['transactionStore'])
+                    block = Block.fromJSON(json_block)
+
+                    if not(self.validateNewBlock(block)):
+                        self._log(logging.error, 
+                            f"Could not update inventory: blockchain is invalid for block {block.height}")
+                        break
+                    self.blockchain.addBlock(block)
+
+                if (self.blockchain.lastBlock.height != self.sync_height):
+                    self.blockchain.blockChain = original_chain # Restore original chain
+                else:
+                    self._log(logging.info, f"Finished syncing blockchain state from block {self.blockchain.lastBlock.height} to block {self.sync_height} [success]")
+            else:
+                self._log(logging.warning, 
+                    f"Received 'updateInventory' request with wrong number of blocks: len_block={len(blocks)}, sync_height={self.sync_height - self.blockchain.lastBlock.height}")				
+        else:
+            self._log(logging.warning, 
+                f"Received 'updateInventory' request from non-chosen peer: received={peer}")
+
+        return True
+
+    def RPC_connect(self, data, client_addr) -> bool:
+        server_address = tuple(data['server_address'])
+        self.peers_server[client_addr] = server_address
+        if (self.client.connect(server_address)):
+            self._log(logging.info, f"Connected back to {server_address} [success]")
+        else:
+            self._log(logging.warning, f"Already connected to {server_address}")
+
+        return True
+
+    def RPC_newBlock(self, data, client_addr) -> bool:
+        data = json.loads(data)
+        data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
+        block = Block.fromJSON(data)
+        if (self.validateNewBlock(block)):
+            self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
+            self.blockchain.addBlock(block)
+        else:
+            self._log(logging.warning,
+                      f"Block #{block.height} invalid: hash={block.getHash()}, lastBlock.height={self.blockchain.lastBlock.height}")
+        return True
+
+    def RPC_end(self, data, client_addr) -> bool:
+        server_address = tuple(data['server_address'])
+        self._log(logging.debug, f"Received disconnect request from {server_address}")
+        self.client.disconnect(server_address, True)  # Disconnects and remove the peer from the peers list
+        if (client_addr in self.peers_server):
+            del self.peers_server[client_addr]
+        
+        return False
+
+    def _log(self, level_func: Callable, msg: str):
+        level_func(f"[{self.id}] " + msg)
