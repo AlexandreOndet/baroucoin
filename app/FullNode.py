@@ -213,6 +213,13 @@ class FullNode(socketserver.ThreadingTCPServer):
         if (self.validateNewBlock(block)):
             self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
             self.blockchain.addBlock(block)
+            for transaction in block.transactionStore:
+                for sender in transaction.senders:
+                    if sender[0] == self.wallet.address:
+                        self.wallet.removeFromBalance(sender[1])
+                for receiver in transaction.receivers:
+                    if receiver[0] == self.wallet.address:
+                        self.wallet.addToBalance(sender[1])
         else:
             self._log(logging.warning,
                       f"Block #{block.height} invalid: hash={block.getHash()}, lastBlock.height={self.blockchain.lastBlock.height}")
