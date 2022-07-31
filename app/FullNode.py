@@ -86,14 +86,18 @@ class FullNode(socketserver.ThreadingTCPServer):
 
         for (addr, amount) in t.senders:
             exists = False
+            validAmount = False
             spent = False
             for block in self.blockchain.blockChain:
                 for k in block.transactionStore.transactions:
-                    if addr in [r_addr for (r_addr, _) in k.receivers]:
-                        exists = True
+                    for (r_addr, r_amount) in k.receivers:
+                        if addr == r_addr:
+                            exists = True
+                        if amount == r_amount:
+                            validAmount = True
                     if addr in [s_addr for (s_addr, _) in k.senders]:
                         spent = True
-            if not exists or spent:
+            if not exists or spent or not validAmount:
                 return False
 
         return True
