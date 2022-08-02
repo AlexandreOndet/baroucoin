@@ -26,8 +26,8 @@ class SyncState(Enum):
 
 class FullNode(socketserver.ThreadingTCPServer):
     """
-    See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
-    Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
+        See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
+        Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
     """
     daemon_threads = True  # Stops server from blocking on abrupt shutdown
     allow_reuse_address = True
@@ -44,14 +44,35 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.blockchain = Blockchain()
         self.transaction_pool = []
         self.max_sync_attempts = 3
+        self.synced = SyncState.FULLY_SYNCED # Consider initial nodes full synced
 
-    '''
-        Overwrite TCPServer implementation for cleaning up on server shutdown
-    '''
     def server_close(self):
+        """
+            Overwrite TCPServer implementation for cleaning up on server shutdown
+        """
         self.client.broadcast({'end': {'server_address': self.server_address}})  # Informs other peers to close the connection
         self.shutdown()
         self.socket.close()
+
+    def _requireSynced(not_synced_return_value=None):
+        """
+            Define decorator for functions that requires a synced node.
+            Neutralize the function call and issue a warning if the node is not synced.
+            Otherwise execute the function call.
+        """
+        def _(func):
+            def wrapper_func(self, *args, **kwargs):
+                def issue_warning(self, *args, **kwargs):
+                    self._log(logging.warning, f"Call to '{func.__name__}' requires a synced node")
+                    return not_synced_return_value
+
+                f = func
+                if not(self.isNodeSynced()):
+                    f = issue_warning
+
+                return f(self, *args, **kwargs)
+            return wrapper_func
+        return _
 
     @property
     def id(self):
@@ -80,6 +101,7 @@ class FullNode(socketserver.ThreadingTCPServer):
     def computeReward(self) -> int:
         return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
+    @_requireSynced()
     def mineNewBlock(self):  # TODO : interrupt mining once a valid block has been received for the same height
         new_block = self.createNewBlock()
         self.consensusAlgorithm.mine(new_block)
@@ -130,11 +152,16 @@ class FullNode(socketserver.ThreadingTCPServer):
         return all(
             [self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
 
-    def syncWithPeers(self):
-        for i in range(self.max_sync_attempts):
-            self._log(logging.info, f"Starting sync with peers (attempt {i}/{self.max_sync_attempts})...")
+    def isNodeSynced(self):
+        return self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED
 
-            self.synced = SyncState.WAITING
+    def syncWithPeers(self):
+        attempt = 1
+        self.synced = SyncState.WAITING
+        
+        while attempt <= self.max_sync_attempts and not self.isNodeSynced():
+            self._log(logging.info, f"Starting sync with peers (attempt {attempt}/{self.max_sync_attempts})...")
+
             self.syncBlockHeightReceivedFromPeer = {k: 0 for k in self.peers_server.keys()}
             self.client.broadcast({
                 "getLastBlock": {"latestBlockHeight": self.blockchain.lastBlock.height}
@@ -143,8 +170,8 @@ class FullNode(socketserver.ThreadingTCPServer):
             while self.synced == SyncState.WAITING: # TODO: Add timeout
                 pass
             
-            if (self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED):
-                break				
+        if (attempt > self.max_sync_attempts):
+            self._log(logging.error, f"Could not sync node: maximum sync attempts reached ({self.max_sync_attempts}/{self.max_sync_attempts})")
 
     def RPC_getLastBlock(self, data, client_addr):
         peer = self.peers_server[client_addr]
@@ -241,6 +268,7 @@ class FullNode(socketserver.ThreadingTCPServer):
 
         return True
 
+    @_requireSynced(not_synced_return_value=True)
     def RPC_newBlock(self, data, client_addr) -> bool:
         data = json.loads(data)
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
