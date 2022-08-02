@@ -3,6 +3,7 @@ import json
 import socketserver
 import sys
 import time
+from enum import Enum, auto, unique
 from typing import Tuple
 
 from app.Block import *
@@ -14,14 +15,20 @@ from app.Transaction import *
 from app.TransactionStore import *
 from app.Wallet import *
 
-'''
-    See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
-    Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
-'''
-
+@unique
+class SyncState(Enum):
+    """Enum for specifying the sync status of a node"""
+    WAITING = auto()
+    FULLY_SYNCED = auto()
+    ALREADY_SYNCED = auto()
+    INVALID_STATE = auto()
+    INVALID_PEER = auto()
 
 class FullNode(socketserver.ThreadingTCPServer):
-    """docstring for FullNode"""
+    """
+    See https://docs.python.org/3/library/socketserver.html#module-socketserver for reference. 
+    Requests are handled by spawning a new instance of 'TCPHandler' in its own thread, calling its 'handle' function.
+    """
     daemon_threads = True  # Stops server from blocking on abrupt shutdown
     allow_reuse_address = True
 
@@ -31,12 +38,12 @@ class FullNode(socketserver.ThreadingTCPServer):
         socketserver.ThreadingTCPServer.__init__(self, server_address,
                                                  RequestHandlerClass)  # Initialize the TCP server for handling peer requests
         self.wallet = existing_wallet
-        self.consensusAlgorithm = ProofOfWork(
-            1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
+        self.consensusAlgorithm = ProofOfWork(1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
         self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
         self.blockchain = Blockchain()
         self.transaction_pool = []
+        self.max_sync_attempts = 3
 
     '''
         Overwrite TCPServer implementation for cleaning up on server shutdown
@@ -124,12 +131,20 @@ class FullNode(socketserver.ThreadingTCPServer):
             [self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
 
     def syncWithPeers(self):
-        # TODO : Start a thread for syncing and prevent mining blocks / retry sync after timeout or packet loss
-        self._log(logging.info, f"Starting sync with peers...")
-        self.syncBlockHeightReceivedFromPeer = {k: 0 for k in self.peers_server.keys()}
-        self.client.broadcast({
-            "getLastBlock": {"latestBlockHeight": self.blockchain.lastBlock.height}
-        })
+        for i in range(self.max_sync_attempts):
+            self._log(logging.info, f"Starting sync with peers (attempt {i}/{self.max_sync_attempts})...")
+
+            self.synced = SyncState.WAITING
+            self.syncBlockHeightReceivedFromPeer = {k: 0 for k in self.peers_server.keys()}
+            self.client.broadcast({
+                "getLastBlock": {"latestBlockHeight": self.blockchain.lastBlock.height}
+            })
+
+            while self.synced == SyncState.WAITING: # TODO: Add timeout
+                pass
+            
+            if (self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED):
+                break				
 
     def RPC_getLastBlock(self, data, client_addr):
         peer = self.peers_server[client_addr]
@@ -196,15 +211,19 @@ class FullNode(socketserver.ThreadingTCPServer):
                 if (self.blockchain.lastBlock.height != self.sync_height):
                     self.blockchain.blockChain = original_chain # Restore original chain
                 else:
+                    self.synced = SyncState.FULLY_SYNCED
                     self._log(logging.info,
                         f"Finished syncing blockchain state from block {original_chain[-1].height} to block {self.sync_height} (chosen_peer={self.chosen_peer}) [success]")
             elif (required_blocks == 0):
+                self.sync = SyncState.ALREADY_SYNCED
                 self._log(logging.warning, 
                     f"Blockchain state is already updated from {client_addr}")
             else:
+                self.sync = SyncState.INVALID_STATE
                 self._log(logging.warning, 
                     f"Received 'updateInventory' request with wrong number of blocks: len_block={len(blocks)}, required_blocks={required_blocks}")
         else:
+            self.sync = SyncState.INVALID_PEER
             self._log(logging.warning, 
                 f"Received 'updateInventory' request from non-chosen peer: client_addr={client_addr}")
 
