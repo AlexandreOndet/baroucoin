@@ -18,10 +18,15 @@ class TCPClient(object):
 
     def __init__(self, server_addr):
         super(TCPClient, self).__init__()
+        # TODO: simplifiy peer structure using only sockets attributes (see https://docs.python.org/3/library/socket.html?highlight=socket#socket.socket.getpeername)
         self.peers = {}  # Key : (HOST, PORT) / Value : socket representing the peer connection
         self.server_addr = server_addr
         # self.register_to_dns_and_fetch_peers()
         # self.connect_to_all_peers()
+
+    def __del__(self):
+        for peer in self.peers:
+            self.disconnect(peer)
 
     def connect_to_all_peers(self):
         for peer in self.peers.keys():
@@ -42,29 +47,28 @@ class TCPClient(object):
             with open(PEERS_JSON_PATH, 'w') as f:
                 json.dump(peers, f, ensure_ascii=False, indent=4)
             for peer in peers:
-                self.peers[peer] = None  # Socket will be instanced later in connect method
+                host, port = tuple(peer.split(':'))
+                self.peers[(host, int(port))] = None  # Socket will be instanced later in connect method
 
     def send_data_to_peer(self, data: dict, peer: Tuple[str, int]):
         logging.debug(f"Trying to send {data} to {peer}")
-        str_peer = f"{peer[0]}:{peer[1]}"
-        if str_peer in self.peers:
-            sock = self.peers[str_peer]
+        if peer in self.peers:
+            sock = self.peers[peer]
             try:
                 sock.send(self._encapsulateMsg(json.dumps(data)))
             except Exception as e:
                 logging.error(f" In send_data_to_peer : {e}")
         else:
-            logging.error(f" TCPClient : Could not find {str_peer} in {self.peers} ")
+            logging.error(f" TCPClient : Could not find {peer} in {self.peers} ")
 
     def connect(self, peer: Tuple[str, int]) -> bool:
-        str_peer = f"{peer[0]}:{peer[1]}"
-        if str_peer in self.peers:  # Prevent connecting back to already connected peers
+        if peer in self.peers:  # Prevent connecting back to already connected peers
             return False
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
             sock.connect(peer)
-            self.peers[str_peer] = sock
+            self.peers[peer] = sock
             data = {'connect': {'server_address': self.server_addr, 'peers': list(self.peers.keys())}}
             sock.send(self._encapsulateMsg(json.dumps(data)))  # Sends server listening port for the remote peer to connect
         except Exception as e:
@@ -74,18 +78,18 @@ class TCPClient(object):
         return True
 
     def disconnect(self, peer: Tuple[str, int], clear=False) -> bool:
-        str_peer = f"{peer[0]}:{peer[1]}"
-        if not str_peer in self.peers:
+        if not peer in self.peers:
             return False
 
         try:
-            self.peers[str_peer].close()
+            self.peers[peer].close()
         except Exception as e:
             logging.error(f"close: {e}")
             return False  # TODO : Handle close exception
 
         if clear:
-            del self.peers[str_peer]
+            del self.peers[peer]
+            
         return True
 
     def broadcast(self, data: dict):
