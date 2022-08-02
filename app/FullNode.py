@@ -177,15 +177,12 @@ class FullNode(socketserver.ThreadingTCPServer):
     def isNodeSynced(self):
         return self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED
 
-    def syncWithPeers(self):
-        def _waitForSync(self):
-            while self.synced == SyncState.WAITING:
-                pass
-
+    def syncWithPeers(self, autostart_mining=True, hard_sync=False):
         if (self.isMining):
             self.stopMining()
 
         attempt = 1
+        self.hard_sync = hard_sync
         self.synced = SyncState.WAITING
         
         while attempt <= self.max_sync_attempts and not self.isNodeSynced():
@@ -196,18 +193,14 @@ class FullNode(socketserver.ThreadingTCPServer):
                 "getLastBlock": {"latestBlockHeight": self.blockchain.currentHeight}
             })
 
-            t = Thread(target=_waitForSync(self))
-            t.start()
-            t.join(timeout=2)
-
-            if (t.is_alive()): # Timeout reached
-                self._log(logging.warning, f"Sync attempt timed out")
+            while self.synced == SyncState.WAITING:
+                pass
 
             attempt += 1
             
         if not(self.isNodeSynced()):
             self._log(logging.error, f"Could not sync node: maximum sync attempts reached ({self.max_sync_attempts}/{self.max_sync_attempts})")
-        elif not(self.isMining): # Node is now synced, start mining
+        elif not(self.isMining) and autostart_mining: # Node is now synced, start automining if enabled
             self.startMining()
 
     def RPC_getLastBlock(self, data, client_addr):
@@ -231,6 +224,10 @@ class FullNode(socketserver.ThreadingTCPServer):
         if (len(self.syncBlockHeightReceivedFromPeer) == len(self.peers_server.keys())):
             self._log(logging.debug, f"Got all block heights from peers: {self.syncBlockHeightReceivedFromPeer}")
 
+            if (self.hard_sync): # Reset blockchain state in case of hard sync
+                self.blockchain.blockChain = []
+                self.blockchain.createGenesisBlock()
+
             # Getting peer with highest returned block height and storing both the address and block height received for checking in updateInventory request
             self.chosen_peer = max(self.syncBlockHeightReceivedFromPeer, key=self.syncBlockHeightReceivedFromPeer.get)
             self.sync_height = self.syncBlockHeightReceivedFromPeer[self.chosen_peer]
@@ -240,7 +237,7 @@ class FullNode(socketserver.ThreadingTCPServer):
                 self._log(logging.debug, f"Sending 'getInventory' request to {peer}")
                 self.client.send_data_to_peer({
                     'getInventory': {
-                        'fromHeight': self.blockchain.currentHeight, 
+                        'fromHeight': self.blockchain.currentHeight,
                         'toHeight': self.sync_height
                     }
                 }, peer)
@@ -272,7 +269,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         if (client_addr == self.chosen_peer): # Peer verification
             blocks = data
             required_blocks = self.sync_height - self.blockchain.currentHeight
-            if (len(blocks) == required_blocks):
+            if (len(blocks) == required_blocks): # Ignore block requirements for hard sync
                 original_chain = [b for b in self.blockchain.blockChain]
                 for json_block in [json.loads(b) for b in blocks]:
                     json_block['transactionStore'] = TransactionStore.fromJSON(json_block['transactionStore'])

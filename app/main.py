@@ -19,7 +19,7 @@ class Orchestrator(Thread):
         self.maxNodes = 5
         self.epoch = 500  # in milliseconds, control speed of the simulation
         self.isRunning = True
-        self.mining_difficulty = 5
+        self.mining_difficulty = 4
 
         assert self.maxNodes >= self.startingNodes
         
@@ -110,8 +110,11 @@ class Orchestrator(Thread):
         for node in self.nodes:
             node.stopMining()
 
+        for node in self.nodes: # Make all nodes sync before mining again, resetting any forks 
+            node.syncWithPeers(autostart_mining=False, hard_sync=True)
+
         for node in self.nodes:
-            node.syncWithPeers()
+            node.startMining()
 
     '''
         Generate a random number between min and max and return True if below or equal threshold. 
