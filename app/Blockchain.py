@@ -27,11 +27,15 @@ class Blockchain:
     def lastBlock(self):
         return self.blockChain[-1]
 
+    @property
+    def currentHeight(self):
+        return self.lastBlock.height
+
     def addBlock(self, block: Block):
         self.blockChain.append(block)
 
     def loadFromJSON(self, file: Union[str, bytes], overwrite=False) -> bool:
-        lastSavedBlockHeight = self.lastBlock.height
+        lastSavedBlockHeight = self.currentHeight
         lastUpdated = "?"
         countUpdated = 0
         try:
@@ -41,7 +45,7 @@ class Blockchain:
                     if overwrite:
                         self.blockChain = []
                         lastSavedBlockHeight = -1
-                    elif (data['lastBlockHeight'] <= self.lastBlock.height):
+                    elif (data['lastBlockHeight'] <= self.currentHeight):
                         logging.info("Loading aborted: current blockchain is longer than previously saved blockchain (set overwrite=True to force load) [failure]")
                         return False
 
@@ -77,7 +81,7 @@ class Blockchain:
                 f.seek(0) # Go back to start of file since it's opened in 'append' mode
                 try:
                     data = json.loads(f.read())
-                    if (data['lastBlockHeight'] > self.lastBlock.height):
+                    if (data['lastBlockHeight'] > self.currentHeight):
                         logging.info("Saving aborted: previously saved blockchain is longer than current blockchain (set overwrite=True to force save) [failure]")
                         return False
 
@@ -97,7 +101,7 @@ class Blockchain:
                     blockchain['blocks'].append(block.toJSON())
 
             blockchain['savedTime'] = time.time()
-            blockchain['lastBlockHeight'] = self.lastBlock.height
+            blockchain['lastBlockHeight'] = self.currentHeight
 
             f.truncate(0) # Erase file content
             f.write(json.dumps(blockchain))
