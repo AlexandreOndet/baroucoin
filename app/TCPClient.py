@@ -1,11 +1,11 @@
-import logging
-import socket
+import base64
 import json
-import requests
+import logging
 import os
-from typing import Tuple
-
+import requests
+import socket
 from dotenv import load_dotenv
+from typing import Tuple
 
 load_dotenv()
 
@@ -44,13 +44,13 @@ class TCPClient(object):
             for peer in peers:
                 self.peers[peer] = None  # Socket will be instanced later in connect method
 
-    def send_data_to_peer(self, data, peer: Tuple[str, int]):
+    def send_data_to_peer(self, data: dict, peer: Tuple[str, int]):
         logging.debug(f"Trying to send {data} to {peer}")
         str_peer = f"{peer[0]}:{peer[1]}"
         if str_peer in self.peers:
             sock = self.peers[str_peer]
             try:
-                sock.send(json.dumps(data).encode('utf-8'))
+                sock.send(self._encapsulateMsg(json.dumps(data)))
             except Exception as e:
                 logging.error(f" In send_data_to_peer : {e}")
         else:
@@ -66,7 +66,7 @@ class TCPClient(object):
             sock.connect(peer)
             self.peers[str_peer] = sock
             data = {'connect': {'server_address': self.server_addr, 'peers': list(self.peers.keys())}}
-            sock.send(json.dumps(data).encode('utf-8'))  # Sends server listening port for the remote peer to connect
+            sock.send(self._encapsulateMsg(json.dumps(data)))  # Sends server listening port for the remote peer to connect
         except Exception as e:
             logging.error(f"connect: {e}")
             return False  # TODO : Handle connect exception
@@ -88,12 +88,18 @@ class TCPClient(object):
             del self.peers[str_peer]
         return True
 
-    def broadcast(self,
-                  data):  # TODO : Serialize data before or in the broadcast call ? Maybe expose a 'serialize' method from this class to FullNode ?
+    def broadcast(self, data: dict):
         for (peer, sock) in list(self.peers.items()):
             try:
-                sock.send(json.dumps(data).encode('utf-8'))
+                sock.send(self._encapsulateMsg(json.dumps(data)))
             except BrokenPipeError as e:
                 logging.error(f"broadcasting: {e} to {peer}")
             except Exception as e:
                 logging.error(f"Unexpected error during broadcasting: {e}")
+
+    '''
+        Encaspulate the 'msg' data by converting it to base64 and wrapping it in a JSON object with special character delimiter '|' for separating messages
+        TODO: Could add a checksum and replace the use of special character with a data length prefix
+    '''
+    def _encapsulateMsg(self, msg: str) -> bytes:
+        return (json.dumps({'msg': base64.b64encode(msg.encode('utf-8')).decode('utf-8')}) + '|').encode('utf-8')
