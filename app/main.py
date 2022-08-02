@@ -17,8 +17,11 @@ class Orchestrator(Thread):
         super(Orchestrator, self).__init__()
         self.startingNodes = 3
         self.maxNodes = 5
-        self.epoch = 2_000  # in milliseconds
+        self.epoch = 500  # in milliseconds, control speed of the simulation
         self.isRunning = True
+        self.mining_difficulty = 5
+
+        assert self.maxNodes >= self.startingNodes
         
         # TODO: Make easier system for setting the frequencies
         self.transactionFrequency = 5
@@ -29,9 +32,10 @@ class Orchestrator(Thread):
         self.transactions = self._getNextTransaction()
         self.nodes = [
             FullNode(
-                consensusAlgorithm=False, 
+                consensusAlgorithm=False,
+                difficulty=self.mining_difficulty, 
                 existing_wallet=Wallet(str(i)), 
-                server_address=("127.0.0.1", 10_000 + i)
+                server_address=("127.0.0.1", 10000 + i)
             ) for i in range(self.startingNodes)
         ]
 
@@ -47,6 +51,9 @@ class Orchestrator(Thread):
                 else:
                     self._log(logging.error,
                               f"Failed to connect {node.id} {node.server_address} to {peer.id} {peer.server_address}")
+
+        for node in self.nodes:
+            node.startMining()
 
     @property
     def numberOfNodes(self) -> int:
@@ -66,12 +73,6 @@ class Orchestrator(Thread):
                 chosenNode.addToTransactionPool(next(self.transactions))
                 self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
 
-            for node in self.nodes:
-                if (self._roll(1, 10, self.miningFrequency)):
-                    node.mineNewBlock()
-                    self._log(logging.info, f"Node {node.id} is mining block #{node.blockchain.lastBlock.height}")
-                    break # Test for only one node mining per epoch
-                
             time.sleep(self.epoch / 1_000)
 
         for node in self.nodes:
@@ -82,10 +83,12 @@ class Orchestrator(Thread):
             self._log(logging.warning, f"Maximum numbers of nodes reached ({self.maxNodes} nodes)")
             return False # TODO : Use exceptions instead
 
+        self._log(logging.info, f"Adding new peer to network...")
         new_node = FullNode(
-            consensusAlgorithm=False, 
+            consensusAlgorithm=False,
+            difficulty=self.mining_difficulty,
             existing_wallet=Wallet(str(self.numberOfNodes)),
-            server_address=("127.0.0.1", 10_000 + self.numberOfNodes) # TODO: handle invalid/busy socket
+            server_address=("127.0.0.1", 10000 + self.numberOfNodes) # TODO: handle invalid/busy socket
         )
         self.nodes.append(new_node)
         Thread(target=new_node.serve_forever).start()
@@ -102,6 +105,13 @@ class Orchestrator(Thread):
         node.server_close()  # Stops the node's server
         self.nodes.remove(node)
         self._log(logging.info, f"Peer {node.id} is leaving the network ({self.numberOfNodes}/{self.maxNodes} nodes)")
+
+    def syncAllNodes(self):
+        for node in self.nodes:
+            node.stopMining()
+
+        for node in self.nodes:
+            node.syncWithPeers()
 
     '''
         Generate a random number between min and max and return True if below or equal threshold. 
@@ -150,7 +160,7 @@ if __name__ == "__main__":
     run = True
     while run:
         user_input = ""
-        while (user_input.lower() not in ['q', 'a', 'd']):
+        while (user_input.lower() not in ['q', 'a', 'd', 's']):
             user_input = input()
 
         if (user_input.lower() == 'q'):
@@ -159,5 +169,7 @@ if __name__ == "__main__":
             simulation.addNewNode()
         elif (user_input.lower() == 'd'):
             simulation.removeNode(simulation.nodes[-1])
+        elif (user_input.lower() == 's'):
+            simulation.syncAllNodes()
 
     simulation.isRunning = False

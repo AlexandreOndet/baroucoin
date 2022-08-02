@@ -4,6 +4,7 @@ import socketserver
 import sys
 import time
 from enum import Enum, auto, unique
+from threading import Thread
 from typing import Tuple
 
 from app.Block import *
@@ -32,19 +33,21 @@ class FullNode(socketserver.ThreadingTCPServer):
     daemon_threads = True  # Stops server from blocking on abrupt shutdown
     allow_reuse_address = True
 
-    def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet,
+    def __init__(self, consensusAlgorithm: bool, existing_wallet: Wallet, 
+                 difficulty=1,
                  server_address: Tuple[str, int] = ('127.0.0.1', 13337),
                  RequestHandlerClass: socketserver.BaseRequestHandler = TCPHandler):
         socketserver.ThreadingTCPServer.__init__(self, server_address,
                                                  RequestHandlerClass)  # Initialize the TCP server for handling peer requests
-        self.wallet = existing_wallet
-        self.consensusAlgorithm = ProofOfWork(1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
-        self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
-        self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
         self.blockchain = Blockchain()
-        self.transaction_pool = []
+        self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
+        self.consensusAlgorithm = ProofOfWork(difficulty) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
+        self.isMining = False
         self.max_sync_attempts = 3
+        self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
         self.synced = SyncState.FULLY_SYNCED # Consider initial nodes full synced
+        self.transaction_pool = []
+        self.wallet = existing_wallet
 
     def server_close(self):
         """
@@ -53,6 +56,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.client.broadcast({'end': {'server_address': self.server_address}})  # Informs other peers to close the connection
         self.shutdown()
         self.socket.close()
+        self.stopMining()
 
     def _requireSynced(not_synced_return_value=None):
         """
@@ -73,6 +77,21 @@ class FullNode(socketserver.ThreadingTCPServer):
                 return f(self, *args, **kwargs)
             return wrapper_func
         return _
+
+    def _log(self, level_func: Callable, msg: str):
+        level_func(f"N:[{self.id}] " + msg)
+
+    def _mine(self):
+        """
+            Threaded code for mining a block
+        """
+        self.isMining = True
+        while self.isMining:
+            new_block = self.createNewBlock()
+            found = self.consensusAlgorithm.mine(new_block)
+            if found: # TODO: See if needs to clear transaction pool if found
+                self.blockchain.addBlock(new_block)
+                self.client.broadcast({"newBlock": new_block.toJSON()})
 
     @property
     def id(self):
@@ -102,17 +121,21 @@ class FullNode(socketserver.ThreadingTCPServer):
         return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
     @_requireSynced()
-    def mineNewBlock(self):  # TODO : interrupt mining once a valid block has been received for the same height
-        new_block = self.createNewBlock()
-        self.consensusAlgorithm.mine(new_block)
-        self.blockchain.addBlock(new_block)
-        self.client.broadcast({"newBlock": new_block.toJSON()})
+    def startMining(self):
+        """
+            Start the node mining thread. 
+            Can be called directly for initial nodes or through 'syncWithPeers' for new joining nodes.
+        """
+        Thread(target=self._mine).start()
 
-    '''
-        See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference
-    '''
+    def stopMining(self):
+        self.consensusAlgorithm.stopMining() # Stop current block mining
+        self.isMining = False
 
     def validateTransaction(self, t: Transaction) -> bool:
+        """
+            See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference
+        """
         if not (any(t.senders)
                 and any(t.receivers)
                 and len(t.senders) == len(set(t.senders))):  # Check for duplicate inputs
@@ -136,12 +159,11 @@ class FullNode(socketserver.ThreadingTCPServer):
 
         return True
 
-    '''
-        See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#validating-a-new-block for reference
-    '''
-
     def validateNewBlock(self, newBlock: Block) -> bool:
-        if ((len(self.blockchain.blockChain) and newBlock.height <= self.blockchain.lastBlock.height)
+        """
+            See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#validating-a-new-block for reference
+        """
+        if ((len(self.blockchain.blockChain) and newBlock.height <= self.blockchain.currentHeight)
                 or newBlock.previousHash != self.blockchain.lastBlock.getHash()
                 or newBlock.getHash()[
                    0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
@@ -156,6 +178,13 @@ class FullNode(socketserver.ThreadingTCPServer):
         return self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED
 
     def syncWithPeers(self):
+        def _waitForSync(self):
+            while self.synced == SyncState.WAITING:
+                pass
+
+        if (self.isMining):
+            self.stopMining()
+
         attempt = 1
         self.synced = SyncState.WAITING
         
@@ -164,21 +193,29 @@ class FullNode(socketserver.ThreadingTCPServer):
 
             self.syncBlockHeightReceivedFromPeer = {k: 0 for k in self.peers_server.keys()}
             self.client.broadcast({
-                "getLastBlock": {"latestBlockHeight": self.blockchain.lastBlock.height}
+                "getLastBlock": {"latestBlockHeight": self.blockchain.currentHeight}
             })
 
-            while self.synced == SyncState.WAITING: # TODO: Add timeout
-                pass
+            t = Thread(target=_waitForSync(self))
+            t.start()
+            t.join(timeout=2)
+
+            if (t.is_alive()): # Timeout reached
+                self._log(logging.warning, f"Sync attempt timed out")
+
+            attempt += 1
             
-        if (attempt > self.max_sync_attempts):
+        if not(self.isNodeSynced()):
             self._log(logging.error, f"Could not sync node: maximum sync attempts reached ({self.max_sync_attempts}/{self.max_sync_attempts})")
+        elif not(self.isMining): # Node is now synced, start mining
+            self.startMining()
 
     def RPC_getLastBlock(self, data, client_addr):
         peer = self.peers_server[client_addr]
-        lastBlockHeight = self.blockchain.lastBlock.height
+        lastBlockHeight = self.blockchain.currentHeight
 
         self._log(logging.debug, f"Received 'getLastBlock' request from {peer} with data : {data}")
-        if (data["latestBlockHeight"] < lastBlockHeight):
+        if (data["latestBlockHeight"] <= lastBlockHeight):
             data = {'listLastBlocks': {'lastBlockHeight': lastBlockHeight}}
             
             self._log(logging.debug, f"Sending block height {lastBlockHeight} to {peer}")
@@ -199,19 +236,31 @@ class FullNode(socketserver.ThreadingTCPServer):
             self.sync_height = self.syncBlockHeightReceivedFromPeer[self.chosen_peer]
             peer = self.peers_server[self.chosen_peer]
 
-            self._log(logging.debug, f"Sending 'getInventory' request to {peer}")
-            self.client.send_data_to_peer({'getInventory': {'toHeight': self.sync_height}}, peer)
+            if (self.sync_height > self.blockchain.currentHeight):
+                self._log(logging.debug, f"Sending 'getInventory' request to {peer}")
+                self.client.send_data_to_peer({
+                    'getInventory': {
+                        'fromHeight': self.blockchain.currentHeight, 
+                        'toHeight': self.sync_height
+                    }
+                }, peer)
+            else: # If maximum received height is same or less than current blockchain height, node is synced
+                self.synced = SyncState.ALREADY_SYNCED
+                self._log(logging.warning, f"Blockchain is already synced at highest block height")
 
         return True
 
     def RPC_getInventory(self, data, client_addr):
         peer = self.peers_server[client_addr]
+        from_height = data['fromHeight']
         to_height = data['toHeight']
 
         self._log(logging.debug, f"Received 'getInventory' request from {peer} with data : {data}")
-        if (to_height > 0 and to_height <= self.blockchain.lastBlock.height):
+        if (from_height > to_height):
+            self._log(logging.error, f"Malformed inventory request: from_height > to_height")
+        elif (to_height > 0 and to_height <= self.blockchain.currentHeight):
             data = {'updateInventory': []}
-            for block in self.blockchain.blockChain[1:to_height+1]: # All nodes have same genesis block so start at #1
+            for block in self.blockchain.blockChain[from_height+1:to_height+1]: # +1 for origin block offset
                 data['updateInventory'].append(block.toJSON())
 
             self._log(logging.debug, f"Sending inventory to {peer}")
@@ -222,35 +271,40 @@ class FullNode(socketserver.ThreadingTCPServer):
     def RPC_updateInventory(self, data, client_addr):
         if (client_addr == self.chosen_peer): # Peer verification
             blocks = data
-            required_blocks = self.sync_height - self.blockchain.lastBlock.height
+            required_blocks = self.sync_height - self.blockchain.currentHeight
             if (len(blocks) == required_blocks):
                 original_chain = [b for b in self.blockchain.blockChain]
                 for json_block in [json.loads(b) for b in blocks]:
                     json_block['transactionStore'] = TransactionStore.fromJSON(json_block['transactionStore'])
                     block = Block.fromJSON(json_block)
 
+                    if block.height == 0: # Ignore origin block as it's common for all nodes
+                        continue
+
                     if not(self.validateNewBlock(block)):
                         self._log(logging.error, 
-                            f"Could not update inventory: blockchain is invalid for block {block.height}")
+                            f"Could not update inventory, blockchain is invalid for block {block.height}: last_block_hash={self.blockchain.lastBlock.getHash()}, new_block_previous_hash={block.previousHash}")
                         break
+
                     self.blockchain.addBlock(block)
 
-                if (self.blockchain.lastBlock.height != self.sync_height):
+                if (self.blockchain.currentHeight != self.sync_height):
+                    self.synced = SyncState.INVALID_STATE
                     self.blockchain.blockChain = original_chain # Restore original chain
                 else:
                     self.synced = SyncState.FULLY_SYNCED
                     self._log(logging.info,
                         f"Finished syncing blockchain state from block {original_chain[-1].height} to block {self.sync_height} (chosen_peer={self.chosen_peer}) [success]")
             elif (required_blocks == 0):
-                self.sync = SyncState.ALREADY_SYNCED
+                self.synced = SyncState.ALREADY_SYNCED
                 self._log(logging.warning, 
                     f"Blockchain state is already updated from {client_addr}")
             else:
-                self.sync = SyncState.INVALID_STATE
+                self.synced = SyncState.INVALID_STATE
                 self._log(logging.warning, 
                     f"Received 'updateInventory' request with wrong number of blocks: len_block={len(blocks)}, required_blocks={required_blocks}")
         else:
-            self.sync = SyncState.INVALID_PEER
+            self.synced = SyncState.INVALID_PEER
             self._log(logging.warning, 
                 f"Received 'updateInventory' request from non-chosen peer: client_addr={client_addr}")
 
@@ -264,8 +318,6 @@ class FullNode(socketserver.ThreadingTCPServer):
         else:
             self._log(logging.warning, f"Already connected to {server_address}")
 
-        self._log(logging.debug, f"New peer state: client.peers={self.client.peers}, peers_server={self.peers_server}")
-
         return True
 
     @_requireSynced(not_synced_return_value=True)
@@ -274,8 +326,9 @@ class FullNode(socketserver.ThreadingTCPServer):
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
         block = Block.fromJSON(data)
         if (self.validateNewBlock(block)):
-            self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
+            self.consensusAlgorithm.stopMining() # Stop mining for this block and start mining next one
             self.blockchain.addBlock(block)
+            self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
             for transaction in block.transactionStore:
                 for sender in transaction.senders:
                     if sender[0] == self.wallet.address:
@@ -285,7 +338,7 @@ class FullNode(socketserver.ThreadingTCPServer):
                         self.wallet.addToBalance(receiver[1])
         else:
             self._log(logging.warning,
-                      f"Block #{block.height} invalid: hash={block.getHash()}, lastBlock.height={self.blockchain.lastBlock.height}")
+                      f"Block #{block.height} invalid: hash={block.getHash()}, currentHeight={self.blockchain.currentHeight}")
         return True
 
     def RPC_end(self, data, client_addr) -> bool:
@@ -295,9 +348,4 @@ class FullNode(socketserver.ThreadingTCPServer):
         if (client_addr in self.peers_server):
             del self.peers_server[client_addr]
 
-        self._log(logging.debug, f"New peer state: client.peers={self.client.peers}, peers_server={self.peers_server}")
-        
         return False
-
-    def _log(self, level_func: Callable, msg: str):
-        level_func(f"N:[{self.id}] " + msg)
