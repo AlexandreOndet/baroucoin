@@ -53,4 +53,4 @@ class TCPHandler(socketserver.BaseRequestHandler):
                 return getattr(self.fullnode, 'RPC_' + method)(data[method], client_addr)
 
     def _log(self, level_func: Callable, msg: str):
-        level_func(f"[{self.fullnode.id}] " + msg)
+        level_func(f"H:[{self.fullnode.id}] " + msg)

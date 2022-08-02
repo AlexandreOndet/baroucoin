@@ -17,7 +17,7 @@ class Orchestrator(Thread):
         super(Orchestrator, self).__init__()
         self.startingNodes = 3
         self.maxNodes = 5
-        self.epoch = 2000  # in milliseconds
+        self.epoch = 2_000  # in milliseconds
         self.isRunning = True
         
         # TODO: Make easier system for setting the frequencies
@@ -28,8 +28,12 @@ class Orchestrator(Thread):
 
         self.transactions = self._getNextTransaction()
         self.nodes = [
-            FullNode(consensusAlgorithm=False, existing_wallet=Wallet(str(i)), server_address=("127.0.0.1", 10000 + i))
-            for i in range(self.startingNodes)]
+            FullNode(
+                consensusAlgorithm=False, 
+                existing_wallet=Wallet(str(i)), 
+                server_address=("127.0.0.1", 10_000 + i)
+            ) for i in range(self.startingNodes)
+        ]
 
         for node in self.nodes:  # Initiate server on all nodes
             Thread(target=node.serve_forever).start()
@@ -68,19 +72,21 @@ class Orchestrator(Thread):
                     self._log(logging.info, f"Node {node.id} is mining block #{node.blockchain.lastBlock.height}")
                     break # Test for only one node mining per epoch
                 
-            time.sleep(self.epoch / 1000)
+            time.sleep(self.epoch / 1_000)
 
         for node in self.nodes:
-            node.client.broadcast({'end': {'server_address': node.server_address}})  # Informs other peers to close the connection
-            node.shutdown()  # Stops the node's server
+            node.server_close()  # Stops the node's server
 
     def addNewNode(self) -> bool:
         if (self.numberOfNodes == self.maxNodes):
             self._log(logging.warning, f"Maximum numbers of nodes reached ({self.maxNodes} nodes)")
             return False # TODO : Use exceptions instead
 
-        new_node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(str(self.numberOfNodes)),
-                                   server_address=("127.0.0.1", 10000 + self.numberOfNodes))
+        new_node = FullNode(
+            consensusAlgorithm=False, 
+            existing_wallet=Wallet(str(self.numberOfNodes)),
+            server_address=("127.0.0.1", 10_000 + self.numberOfNodes) # TODO: handle invalid/busy socket
+        )
         self.nodes.append(new_node)
         Thread(target=new_node.serve_forever).start()
         
@@ -93,8 +99,7 @@ class Orchestrator(Thread):
         return True
 
     def removeNode(self, node: FullNode):
-        node.client.broadcast({'end': {'server_address': node.server_address}})  # Informs other peers to close the connection
-        node.shutdown()  # Stops the node's server
+        node.server_close()  # Stops the node's server
         self.nodes.remove(node)
         self._log(logging.info, f"Peer {node.id} is leaving the network ({self.numberOfNodes}/{self.maxNodes} nodes)")
 
@@ -115,12 +120,13 @@ class Orchestrator(Thread):
             i += 1
 
     def _log(self, level_func: Callable, msg: str):
-        level_func(f"[_MAIN_] " + msg)
+        level_func(f"M:[_MAIN_] " + msg)
 
 '''
     usage : python main.py
 '''
 if __name__ == "__main__":
+    # logging.disable(logging.INFO) # Use this to disable debug and print infos
     file_handler = logging.FileHandler(app_dir / "simulation.log", mode='w')
 
     console_handler = logging.StreamHandler()

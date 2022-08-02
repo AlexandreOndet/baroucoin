@@ -1,2 +1,2 @@
 @echo off
-start python -m app.main
+cls && python -m app.main

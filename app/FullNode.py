@@ -35,11 +35,16 @@ class FullNode(socketserver.ThreadingTCPServer):
             1) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
         self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
-        self.blockchain = Blockchain()  # TODO : ask peers for blockchain state
+        self.blockchain = Blockchain()
         self.transaction_pool = []
 
-    def __del__(self):
-        self.server_close()
+    '''
+        Overwrite TCPServer implementation for cleaning up on server shutdown
+    '''
+    def server_close(self):
+        self.client.broadcast({'end': {'server_address': self.server_address}})  # Informs other peers to close the connection
+        self.shutdown()
+        self.socket.close()
 
     @property
     def id(self):
@@ -175,8 +180,9 @@ class FullNode(socketserver.ThreadingTCPServer):
     def RPC_updateInventory(self, data, client_addr):
         if (client_addr == self.chosen_peer): # Peer verification
             blocks = data
-            if (len(blocks) == (self.sync_height - self.blockchain.lastBlock.height)):
-                original_chain = self.blockchain.blockChain
+            required_blocks = self.sync_height - self.blockchain.lastBlock.height
+            if (len(blocks) == required_blocks):
+                original_chain = [b for b in self.blockchain.blockChain]
                 for json_block in [json.loads(b) for b in blocks]:
                     json_block['transactionStore'] = TransactionStore.fromJSON(json_block['transactionStore'])
                     block = Block.fromJSON(json_block)
@@ -190,13 +196,17 @@ class FullNode(socketserver.ThreadingTCPServer):
                 if (self.blockchain.lastBlock.height != self.sync_height):
                     self.blockchain.blockChain = original_chain # Restore original chain
                 else:
-                    self._log(logging.info, f"Finished syncing blockchain state from block {self.blockchain.lastBlock.height} to block {self.sync_height} [success]")
+                    self._log(logging.info,
+                        f"Finished syncing blockchain state from block {original_chain[-1].height} to block {self.sync_height} (chosen_peer={self.chosen_peer}) [success]")
+            elif (required_blocks == 0):
+                self._log(logging.warning, 
+                    f"Blockchain state is already updated from {client_addr}")
             else:
                 self._log(logging.warning, 
-                    f"Received 'updateInventory' request with wrong number of blocks: len_block={len(blocks)}, sync_height={self.sync_height - self.blockchain.lastBlock.height}")				
+                    f"Received 'updateInventory' request with wrong number of blocks: len_block={len(blocks)}, required_blocks={required_blocks}")
         else:
             self._log(logging.warning, 
-                f"Received 'updateInventory' request from non-chosen peer: received={peer}")
+                f"Received 'updateInventory' request from non-chosen peer: client_addr={client_addr}")
 
         return True
 
@@ -207,6 +217,8 @@ class FullNode(socketserver.ThreadingTCPServer):
             self._log(logging.info, f"Connected back to {server_address} [success]")
         else:
             self._log(logging.warning, f"Already connected to {server_address}")
+
+        self._log(logging.debug, f"New peer state: client.peers={self.client.peers}, peers_server={self.peers_server}")
 
         return True
 
@@ -235,8 +247,10 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.client.disconnect(server_address, True)  # Disconnects and remove the peer from the peers list
         if (client_addr in self.peers_server):
             del self.peers_server[client_addr]
+
+        self._log(logging.debug, f"New peer state: client.peers={self.client.peers}, peers_server={self.peers_server}")
         
         return False
 
     def _log(self, level_func: Callable, msg: str):
-        level_func(f"[{self.id}] " + msg)
+        level_func(f"N:[{self.id}] " + msg)
