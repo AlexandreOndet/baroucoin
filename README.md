@@ -7,7 +7,7 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [x] Sérialisation des messages en JSON
 - [x] Récupération des informations avec l'API du serveur
 ### Échanges d'informations entres les full nodes
-- [ ] État de la blockchain
+- [x] État de la blockchain
 - [x] Nouveau bloc trouvé
 - [ ] Nouvelles transactions
 - [ ] Difficulté du bloc courant
@@ -23,10 +23,10 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [ ] Documentation des classes
 - [ ] Documentation des fonctions
 
-# Lancement de la simulation
-Via le script `run.bat` ou `python -m app.main` depuis la racine. 
+# Lancement de la simulation et visualisation des graphes
+Prérequis: altair, pandas, streamlit
 
-Les tests peuvent être lancés via `python -m unittest test.test_xxx`. L'option `-b` peut être utilisée pour supprimer les messages vers la console lors des tests.
+Démarrer le serveur web Streamlit via `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
 
 # Lancement du serveur
 Pour initialiser le serveur (jouant un rôle de DNS central pour simplifier la découvertes des noeuds du réseau), nous utilisons Docker.

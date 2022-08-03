@@ -45,6 +45,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.isMining = False
         self.max_sync_attempts = 3
         self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
+        self.syncBlockHeightReceivedFromPeer = {}
         self.synced = SyncState.FULLY_SYNCED # Consider initial nodes full synced
         self.transaction_pool = []
         self.wallet = existing_wallet
