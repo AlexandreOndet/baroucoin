@@ -11,6 +11,7 @@ class ChartsRenderer():
         self.dataframe_display = None
         self.chart_display = None
         self.log_display = None
+        self.nodes_display = None
 
     def log(self, msg: str):
         if not self.log_display:
@@ -27,6 +28,10 @@ class ChartsRenderer():
         if not self.chart_display:
             self.chart_display = st
         self.chart_display = self.chart_display.altair_chart(self._plot())
+
+        if not self.nodes_display:
+            self.nodes_display = st
+        self.nodes_display = self.nodes_display.text('Live peers: ' + ' | '.join([n.id for n in nodes]))
 
     def _plot(self):
         return alt.Chart(self.df_nodes).mark_line().encode(

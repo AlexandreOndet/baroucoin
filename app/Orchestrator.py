@@ -15,7 +15,7 @@ class Orchestrator(Thread):
         self.maxNodes = 5
         self.epoch_time = 1000  # in milliseconds, control speed of the simulation
         self.isRunning = True
-        self.mining_difficulty = 5
+        self.mining_difficulty = 4
 
         assert self.maxNodes >= self.startingNodes
         
@@ -32,32 +32,28 @@ class Orchestrator(Thread):
     def numberOfNodes(self) -> int:
         return len(self.nodes)
 
+    @st.cache(hash_funcs={'_thread.lock': id, '_io.TextIOWrapper': id, 'builtins.generator': id, '_thread.RLock': id, 'builtins.weakref': id}, suppress_st_warning=True)
     def run(self):
-        start_btn_container = st.empty()
-        start_btn = start_btn_container.button("Start simulation", key='1')
-        if start_btn:
-            start_btn = start_btn_container.button("Start simulation", disabled=True, key='2')
+        self._setupNodes()
+        self.renderer.render(self.nodes) # First render loads the charts
+        while self.isRunning:
+            if (self._roll(1, 15, self.disconnectFrequency) and self.numberOfNodes > 1):
+                chosenNode = random.choice(self.nodes)
+                self.removeNode(chosenNode)
 
-            self._setupNodes()
+            if (self._roll(1, 15, self.newPeerFrequency)):
+                self.addNewNode()
+
+            if (self._roll(1, 10, self.transactionFrequency)):
+                chosenNode = random.choice(self.nodes)
+                chosenNode.addToTransactionPool(next(self.transactions))
+                self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
+
             self.renderer.render(self.nodes)
-            while self.isRunning:
-                if (self._roll(1, 15, self.disconnectFrequency) and self.numberOfNodes > 1):
-                    chosenNode = random.choice(self.nodes)
-                    self.removeNode(chosenNode)
+            time.sleep(self.epoch_time / 1_000)
 
-                if (self._roll(1, 15, self.newPeerFrequency)):
-                    self.addNewNode()
-
-                if (self._roll(1, 10, self.transactionFrequency)):
-                    chosenNode = random.choice(self.nodes)
-                    chosenNode.addToTransactionPool(next(self.transactions))
-                    self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
-
-                self.renderer.render(self.nodes)
-                time.sleep(self.epoch_time / 1_000)
-
-            for node in self.nodes:
-                node.server_close()  # Stops the node's server
+        for node in self.nodes:
+            node.server_close()  # Stops the node's server
 
     def stop(self):
         self.isRunning = False

@@ -48,14 +48,19 @@ if __name__ == "__main__":
     logging.addLevelName(logging.ERROR, '[ERROR]')
     logging.addLevelName(logging.CRITICAL, '[CRITICAL]')
 
-    renderer = ChartsRenderer()
-    simulation = Orchestrator(renderer=renderer)
-    t = Thread(target=handle_input, args=(simulation,))
-    
-    add_script_run_ctx(simulation)
-    add_script_run_ctx(t)
+    start_btn_container = st.empty()
+    start_btn = start_btn_container.button("Start simulation", key='1')
+    if start_btn:
+        start_btn = start_btn_container.button("Start simulation", disabled=True, key='2')
+
+        renderer = ChartsRenderer()
+        simulation = Orchestrator(renderer=renderer)
+        t = Thread(target=handle_input, args=(simulation,))
         
-    simulation.start()
-    t.start()
-    
-    simulation.join()
+        add_script_run_ctx(simulation)
+        add_script_run_ctx(t)
+            
+        simulation.start()
+        t.start()
+        
+        simulation.join()
