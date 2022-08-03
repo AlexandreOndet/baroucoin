@@ -3,14 +3,12 @@ import random
 from threading import Thread
 
 from app.FullNode import *
-from app.ChartsRenderer import *
 
 class Orchestrator(Thread):
     """docstring for Orchestrator"""
 
-    def __init__(self, renderer: ChartsRenderer):
+    def __init__(self):
         super(Orchestrator, self).__init__()
-        self.renderer = renderer
         self.startingNodes = 3
         self.maxNodes = 5
         self.epoch_time = 1000  # in milliseconds, control speed of the simulation
@@ -32,16 +30,15 @@ class Orchestrator(Thread):
     def numberOfNodes(self) -> int:
         return len(self.nodes)
 
-    @st.cache(hash_funcs={'_thread.lock': id, '_io.TextIOWrapper': id, 'builtins.generator': id, '_thread.RLock': id, 'builtins.weakref': id}, suppress_st_warning=True)
     def run(self):
         self._setupNodes()
-        self.renderer.render(self.nodes) # First render loads the charts
+
         while self.isRunning:
-            if (self._roll(1, 15, self.disconnectFrequency) and self.numberOfNodes > 1):
+            if (self._roll(1, 50, self.disconnectFrequency) and self.numberOfNodes > 1):
                 chosenNode = random.choice(self.nodes)
                 self.removeNode(chosenNode)
 
-            if (self._roll(1, 15, self.newPeerFrequency)):
+            if (self._roll(1, 50, self.newPeerFrequency)):
                 self.addNewNode()
 
             if (self._roll(1, 10, self.transactionFrequency)):
@@ -49,7 +46,6 @@ class Orchestrator(Thread):
                 chosenNode.addToTransactionPool(next(self.transactions))
                 self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
 
-            self.renderer.render(self.nodes)
             time.sleep(self.epoch_time / 1_000)
 
         for node in self.nodes:
@@ -142,6 +138,4 @@ class Orchestrator(Thread):
             i += 1
 
     def _log(self, level_func: Callable, msg: str):
-        if (level_func == logging.info):
-            self.renderer.log(msg)
         level_func(f"M:[_MAIN_] " + msg)

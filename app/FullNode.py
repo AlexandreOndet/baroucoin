@@ -24,6 +24,7 @@ class SyncState(Enum):
     ALREADY_SYNCED = auto()
     INVALID_STATE = auto()
     INVALID_PEER = auto()
+    NOT_ENOUGH_HEIGHTS_RECEIVED = auto()
 
 class FullNode(socketserver.ThreadingTCPServer):
     """
@@ -179,12 +180,17 @@ class FullNode(socketserver.ThreadingTCPServer):
         return self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED
 
     def syncWithPeers(self, autostart_mining=True, hard_sync=False):
+        def _waitSyncLoop():
+            while self.synced == SyncState.WAITING:
+                pass
+
         if (self.isMining):
             self.stopMining()
 
         attempt = 1
         self.hard_sync = hard_sync
         self.synced = SyncState.WAITING
+        self.syncWaitForAllPeersThread = None
         
         while attempt <= self.max_sync_attempts and not self.isNodeSynced():
             self._log(logging.info, f"Starting sync with peers (attempt {attempt}/{self.max_sync_attempts})...")
@@ -194,8 +200,12 @@ class FullNode(socketserver.ThreadingTCPServer):
                 "getLastBlock": {"latestBlockHeight": self.blockchain.currentHeight}
             })
 
-            while self.synced == SyncState.WAITING:
-                pass
+            wait_sync_loop_thread = Thread(target=_waitSyncLoop)
+            wait_sync_loop_thread.start()
+            wait_sync_loop_thread.join(timeout=30)
+
+            if wait_sync_loop_thread.is_alive(): # Timeout reached
+                self._log(logging.warning, f"Timeout for syncing node reached")
 
             attempt += 1
             
@@ -203,6 +213,8 @@ class FullNode(socketserver.ThreadingTCPServer):
             self._log(logging.error, f"Could not sync node: maximum sync attempts reached ({self.max_sync_attempts}/{self.max_sync_attempts})")
         elif not(self.isMining) and autostart_mining: # Node is now synced, start automining if enabled
             self.startMining()
+
+        self.syncWaitForAllPeersThread = None
 
     def RPC_getLastBlock(self, data, client_addr):
         peer = self.peers_server[client_addr]
@@ -218,33 +230,49 @@ class FullNode(socketserver.ThreadingTCPServer):
         return True
 
     def RPC_listLastBlocks(self, data, client_addr):
+        def _syncWaitForAllPeers():
+            while (len(self.syncBlockHeightReceivedFromPeer) != len(self.peers_server.keys())): # Try to get data from all peers
+                pass
+
         peer = self.peers_server[client_addr]
         self.syncBlockHeightReceivedFromPeer[client_addr] = data['lastBlockHeight']
-        
         self._log(logging.debug, f"Received block height {data['lastBlockHeight']} from {peer}")
-        if (len(self.syncBlockHeightReceivedFromPeer) == len(self.peers_server.keys())):
-            self._log(logging.debug, f"Got all block heights from peers: {self.syncBlockHeightReceivedFromPeer}")
+        
+        if not self.syncWaitForAllPeersThread:
+            self.syncWaitForAllPeersThread = Thread(target=_syncWaitForAllPeers)
+            self.syncWaitForAllPeersThread.start()
+        else:
+            return True # Run this RPC only once and wait for thread to finish or timeout
 
-            if (self.hard_sync): # Reset blockchain state in case of hard sync
-                self.blockchain.blockChain = []
-                self.blockchain.createGenesisBlock()
+        self.syncWaitForAllPeersThread.join(timeout=3)
+        if (len(self.syncBlockHeightReceivedFromPeer) < len(self.peers_server.keys())//2): # If less than half of peers responded, abort sync
+            self.synced = SyncState.NOT_ENOUGH_HEIGHTS_RECEIVED
+            self._log(logging.error, 
+                f"Could not sync node, not enough data received from peers: received={len(self.syncBlockHeightReceivedFromPeer)} < required={len(self.peers_server.keys())//2}")
+            return True
 
-            # Getting peer with highest returned block height and storing both the address and block height received for checking in updateInventory request
-            self.chosen_peer = max(self.syncBlockHeightReceivedFromPeer, key=self.syncBlockHeightReceivedFromPeer.get)
-            self.sync_height = self.syncBlockHeightReceivedFromPeer[self.chosen_peer]
-            peer = self.peers_server[self.chosen_peer]
+        self._log(logging.debug, f"Got {len(self.syncBlockHeightReceivedFromPeer)} block heights from peers: {self.syncBlockHeightReceivedFromPeer}")
 
-            if (self.sync_height > self.blockchain.currentHeight):
-                self._log(logging.debug, f"Sending 'getInventory' request to {peer}")
-                self.client.send_data_to_peer({
-                    'getInventory': {
-                        'fromHeight': self.blockchain.currentHeight,
-                        'toHeight': self.sync_height
-                    }
-                }, peer)
-            else: # If maximum received height is same or less than current blockchain height, node is synced
-                self.synced = SyncState.ALREADY_SYNCED
-                self._log(logging.warning, f"Blockchain is already synced at highest block height")
+        if (self.hard_sync): # Reset blockchain state in case of hard sync
+            self.blockchain.blockChain = []
+            self.blockchain.createGenesisBlock()
+
+        # Getting peer with highest returned block height and storing both the address and block height received for checking in updateInventory request
+        self.chosen_peer = max(self.syncBlockHeightReceivedFromPeer, key=self.syncBlockHeightReceivedFromPeer.get)
+        self.sync_height = self.syncBlockHeightReceivedFromPeer[self.chosen_peer]
+        peer = self.peers_server[self.chosen_peer]
+
+        if (self.sync_height > self.blockchain.currentHeight):
+            self._log(logging.debug, f"Sending 'getInventory' request to {peer}")
+            self.client.send_data_to_peer({
+                'getInventory': {
+                    'fromHeight': self.blockchain.currentHeight,
+                    'toHeight': self.sync_height
+                }
+            }, peer)
+        else: # If maximum received height is same or less than current blockchain height, node is synced
+            self.synced = SyncState.ALREADY_SYNCED
+            self._log(logging.warning, f"Blockchain is already synced at highest block height")
 
         return True
 
