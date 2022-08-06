@@ -165,14 +165,18 @@ class FullNode(socketserver.ThreadingTCPServer):
         """
         if ((len(self.blockchain.blockChain) and newBlock.height <= self.blockchain.currentHeight)
                 or newBlock.previousHash != self.blockchain.lastBlock.getHash()
-                or newBlock.getHash()[
-                   0:self.consensusAlgorithm.blockDifficulty] != '0' * self.consensusAlgorithm.blockDifficulty
                 or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
                 or newBlock.reward != self.computeReward()):
             return False
-
-        return all(
-            [self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
+        frac, whole = modf(self.consensusAlgorithm.blockDifficulty)
+        whole = int(whole)
+        if frac == 0:
+            if newBlock.getHash()[0:whole] != '0' * whole:
+                return False
+        elif frac == 0.5:
+            if newBlock.getHash()[0:whole + 1] != '0' * whole + '1' and newBlock.getHash()[0:whole + 1] != '0' * (whole + 1):
+                return False
+        return all([self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
 
     def isNodeSynced(self):
         return self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED
