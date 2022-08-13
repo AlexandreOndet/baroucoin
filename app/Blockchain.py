@@ -8,6 +8,7 @@ from app.Block import *
 from app.TransactionStore import *
 
 class Blockchain:
+    """Represents the blockchain."""
     def __init__(self):
         self.blockChain = []
         self.createGenesisBlock()

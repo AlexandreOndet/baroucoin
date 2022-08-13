@@ -5,7 +5,22 @@ from threading import Thread
 from app.FullNode import *
 
 class Orchestrator(Thread):
-    """docstring for Orchestrator"""
+    """
+    Represents the simulation as a threaded class. 
+    The simulation runs until explicit shutdown through user input. 
+    Parameters of the simulation can be edited in the __init__ method.
+
+    Attributes:
+    - startingNodes: number of peers at the start of simulation
+    - maxNodes: maximum numbers of peers allowed
+    - epoch_time: speed of the simulations for triggering events
+    - miningDifficulty: float value in 0.5 increments representing the mining difficulty for PoW
+
+    Random events:
+    - transactionFrequency: chances for a transaction to be sent to a random peer
+    - disconnectFrequency: chances for a peer to leave the network
+    - newPeerFrequency: chances for a new peer to join the network
+    """
 
     def __init__(self):
         super(Orchestrator, self).__init__()
@@ -13,15 +28,13 @@ class Orchestrator(Thread):
         self.maxNodes = 5
         self.epoch_time = 1000  # in milliseconds, control speed of the simulation
         self.isRunning = True
-        self.mining_difficulty = 4
+        self.miningDifficulty = 5
 
         assert self.maxNodes >= self.startingNodes
         
-        # TODO: Make easier system for setting the frequencies
-        self.transactionFrequency = 5
-        self.miningFrequency = 2
-        self.disconnectFrequency = 1
-        self.newPeerFrequency = 2
+        self.transactionFrequency = .5
+        self.disconnectFrequency = .1
+        self.newPeerFrequency = .2
 
         self.transactions = self._getNextTransaction()
         self.nodes = []
@@ -34,14 +47,14 @@ class Orchestrator(Thread):
         self._setupNodes()
 
         while self.isRunning:
-            if (self._roll(1, 50, self.disconnectFrequency) and self.numberOfNodes > 1):
+            if (self._roll(self.disconnectFrequency) and self.numberOfNodes > 1):
                 chosenNode = random.choice(self.nodes)
                 self.removeNode(chosenNode)
 
-            if (self._roll(1, 50, self.newPeerFrequency)):
+            if (self._roll(self.newPeerFrequency)):
                 self.addNewNode()
 
-            if (self._roll(1, 10, self.transactionFrequency)):
+            if (self._roll(self.transactionFrequency)):
                 chosenNode = random.choice(self.nodes)
                 chosenNode.addToTransactionPool(next(self.transactions))
                 self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
@@ -62,7 +75,7 @@ class Orchestrator(Thread):
         self._log(logging.info, f"Adding new peer to network...")
         new_node = FullNode(
             consensusAlgorithm=False,
-            difficulty=self.mining_difficulty,
+            difficulty=self.miningDifficulty,
             existing_wallet=Wallet(str(self.numberOfNodes)),
             server_address=("127.0.0.1", 10000 + self.numberOfNodes) # TODO: handle invalid/busy socket
         )
@@ -95,17 +108,25 @@ class Orchestrator(Thread):
         for node in self.nodes:
             node.startMining()
 
-    '''
-        Generate a random number between min and max and return True if below or equal threshold. 
-    '''
-    def _roll(self, _min, _max, threshold):
-        return random.randint(_min, _max) <= threshold
+    def increaseDifficulty(self):
+        self.miningDifficulty += 0.5
+        self._updateDifficulty()
+
+    def decreaseDifficulty(self):
+        self.miningDifficulty -= 0.5
+        self._updateDifficulty()
+
+    def _roll(self, threshold: float) -> bool:
+        """
+        Generate a random number between 1 and 100 (included) and return True if below or equal threshold (must be percentage value). 
+        """
+        return random.randint(1, 100) <= 10*threshold
 
     def _setupNodes(self):
         self.nodes = [
             FullNode(
                 consensusAlgorithm=False,
-                difficulty=self.mining_difficulty, 
+                difficulty=self.miningDifficulty, 
                 existing_wallet=Wallet(str(i)), 
                 server_address=("127.0.0.1", 10000 + i)
             ) for i in range(self.startingNodes)
@@ -126,6 +147,18 @@ class Orchestrator(Thread):
 
         for node in self.nodes:
             node.startMining()
+
+    def _updateDifficulty(self):
+        for node in self.nodes:
+            node.stopMining()
+
+        for node in self.nodes:
+            node.consensusAlgorithm.blockDifficulty = self.miningDifficulty
+
+        for node in self.nodes:
+            node.startMining()
+
+        self._log(logging.info, f"New difficulty set to {self.miningDifficulty}")
 
     '''
         Generator for transactions: loads transactions from JSON and loops through the list sequentially 

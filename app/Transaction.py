@@ -2,8 +2,9 @@ from json import dumps
 
 
 class Transaction:
+    """Represents a transaction between two peers."""
     def __init__(self, senders, receivers):
-        """senders and receivers are a list of tuples with the addresses and the amounts"""
+        """Senders and receivers are a list of tuples with the addresses and the amounts."""
         total_in = 0
         for i in senders:
             total_in += i[1]

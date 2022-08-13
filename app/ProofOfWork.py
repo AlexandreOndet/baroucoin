@@ -3,6 +3,7 @@ from math import modf
 
 
 class ProofOfWork(ConsensusAlgorithm, dict):
+    """Proof of Work consensus based on the number of leading zeros and ones for adjusting the mining difficulty."""
     def __init__(self, blockDifficulty):
         super(ProofOfWork, self).__init__()
         self.blockDifficulty = blockDifficulty

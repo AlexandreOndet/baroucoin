@@ -9,14 +9,12 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 ### Échanges d'informations entres les full nodes
 - [x] État de la blockchain
 - [x] Nouveau bloc trouvé
-- [ ] Nouvelles transactions
-- [ ] Difficulté du bloc courant
 ### 'ProofOfWork'
 - [x] Implémentation du minage des blocs
 - [x] Vérification du bloc miné
 - [X] Vérification des transactions
 - [x] Calcul de la récompense de bloc
-- [ ] Actualisation autonome de la difficulté par les pairs
+- [x] Actualisation dynamique de la difficulté par les pairs
 ### Amélioration du code
 - [ ] Remplacer le booléen 'consensusAlgorithm' pour être plus explicite (énumération ?)
 - [ ] Documentation des tests

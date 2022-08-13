@@ -2,6 +2,7 @@ from __future__ import annotations # Allows for using class type hinting within 
 from app.Transaction import *
 
 class TransactionStore(dict):
+    """Stores all transactions within a block."""
     def __init__(self, transactions: list(Transaction) = None):
         super(TransactionStore, self).__init__()
         self.transactions = transactions if transactions != None else []

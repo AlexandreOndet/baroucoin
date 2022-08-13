@@ -5,6 +5,19 @@ import json
 from app.TransactionStore import *
 
 class Block:
+    """
+    Represents a blockchain block.
+
+    Attributes:
+    - timestamp
+    - transactionStore: stores the list of transactions in the block
+    - height
+    - consensusAlgorithm: stores the consensus used for the blockchain
+    - previousHash
+    - miner: address who mined the block
+    - reward: miner's reward for mining the block
+    - nonce
+    """
     def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: bool,
                  previousHash, miner, reward, nonce=0):
         self.timestamp = timestamp

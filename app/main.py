@@ -10,11 +10,22 @@ load_dotenv()
 app_dir = Path(__file__).parent
 
 def handle_input():
+    """
+    Handles the console input for the simulation (commands are case-insensitive).
+
+    The commands are:
+    - 'q/Q': Quit the simulation
+    - 'a/A': Add a new peer (up to the maximum peer capacity of the simulation)
+    - 'd/D': Remove the last added peer from the simulation (can be added back with a/A)
+    - 's/S': Synchronize all peers to the highest blockchain
+    - '+': Increase mining difficulty
+    - '-': Decrease mining difficulty
+    """
     global simulation
     run = True
     while run:
         user_input = ""
-        while (user_input.lower() not in ['q', 'a', 'd', 's']):
+        while (user_input.lower() not in ['q', 'a', 'd', 's', '+', '-']):
             user_input = input()
 
             if (user_input.lower() == 'q'):
@@ -25,6 +36,10 @@ def handle_input():
                 simulation.removeLastNode()
             elif (user_input.lower() == 's'):
                 simulation.syncAllNodes()
+            elif (user_input.lower() == '+'):
+                simulation.increaseDifficulty()
+            elif (user_input.lower() == '-'):
+                simulation.decreaseDifficulty()
 
     simulation.stop()
 

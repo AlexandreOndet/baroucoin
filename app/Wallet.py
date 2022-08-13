@@ -6,7 +6,7 @@ from cryptography.hazmat.primitives.serialization import *
 
 
 class Wallet(object):
-    """docstring for Wallet"""
+    """Wallet associated with a full node."""
 
     def __init__(self, seed: str, display_name=""):
         super(Wallet, self).__init__()
@@ -16,7 +16,7 @@ class Wallet(object):
         self.address = self.generate_address()
 
     def generate_keys(self, seed: bytes) -> ec.EllipticCurvePrivateKey:
-        salt = b''
+        salt = b'' # Empty salt for the purpose of generating the same addresses (useful for the simulation)
         kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt, iterations=200_000)
         dk = kdf.derive(seed)
         return ec.derive_private_key(int.from_bytes(dk, "big"),
@@ -51,7 +51,3 @@ class Wallet(object):
             print(f"=== {self.display_name} ===")
         print(f"Address : {self.address.decode()}")
         print(f"Balance : {self.balance} baroucoin")
-
-# w = Wallet("passwordverylongpasswordpasswordverylongpasswordpasswordverylongpasswordpasswordverylongpasswordpasswordverylongpasswordpasswordverylongpassword", "MyWallet")
-# w.addToBalance(100)
-# w.show_info()

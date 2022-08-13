@@ -14,7 +14,7 @@ DNS_SERVER_IP = os.getenv("DNS_SERVER_IP")
 
 
 class TCPClient(object):
-    """docstring for TCPClient"""
+    """Helper class for managing peers socket interactions."""
 
     def __init__(self, server_addr):
         super(TCPClient, self).__init__()
@@ -33,9 +33,7 @@ class TCPClient(object):
             self.connect(peer)
 
     def register_to_dns_and_fetch_peers(self):
-        """
-        Register this client as a full node on DNS and get all peers registered to join the network
-        """
+        """Register this client as a full node on DNS and get all peers registered to join the network."""
         # Starts by asking a DNS server for peers list
         peers_response = requests.get(DNS_SERVER_IP + "/new-peer")
         print(peers_response)
@@ -101,9 +99,7 @@ class TCPClient(object):
             except Exception as e:
                 logging.error(f"Unexpected error during broadcasting: {e}")
 
-    '''
-        Encaspulate the 'msg' data by converting it to base64 and wrapping it in a JSON object with special character delimiter '|' for separating messages
-        TODO: Could add a checksum and replace the use of special character with a data length prefix
-    '''
     def _encapsulateMsg(self, msg: str) -> bytes:
+        """Encaspulate the 'msg' data by converting it to base64 and wrapping it in a JSON object with special character delimiter '|' for separating messages."""
+        # TODO: Could add a checksum and replace the use of special character with a data length prefix
         return (json.dumps({'msg': base64.b64encode(msg.encode('utf-8')).decode('utf-8')}) + '|').encode('utf-8')

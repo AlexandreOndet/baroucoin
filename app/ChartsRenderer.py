@@ -3,14 +3,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 class ChartsRenderer():
-    """docstring for ChartsRenderer"""
+    """Renders the charts in real-time."""
     def __init__(self, simulation):
         super(ChartsRenderer, self).__init__()
         self.simulation = simulation
         self.df_nodes = pd.DataFrame(columns=['nodeId', 'height', 'epoch']).astype({'nodeId': 'string', 'height': 'int', 'epoch': 'int'})
         self.plots = {}
-        self.x_limit = 20
-        self.y_limit = 30
+        self.x_limit = 60
+        self.y_limit = 50
         self.fig = plt.figure()
         self.fig.set_size_inches(12, 8)
         self.ax = self.fig.add_subplot(1, 1, 1)
