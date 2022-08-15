@@ -3,6 +3,7 @@ import random
 from threading import Thread
 
 from app.FullNode import *
+from app.ChartsRenderer import *
 
 class Orchestrator(Thread):
     """
@@ -22,7 +23,7 @@ class Orchestrator(Thread):
     - newPeerFrequency: chances for a new peer to join the network
     """
 
-    def __init__(self):
+    def __init__(self, renderer: ChartsRenderer):
         super(Orchestrator, self).__init__()
         self.startingNodes = 3
         self.maxNodes = 5
@@ -38,13 +39,16 @@ class Orchestrator(Thread):
 
         self.transactions = self._getNextTransaction()
         self.nodes = []
+        self.renderer = renderer
 
     @property
     def numberOfNodes(self) -> int:
         return len(self.nodes)
-
+    
+    @st.cache(hash_funcs={'_thread.lock': id, '_io.TextIOWrapper': id, 'builtins.generator': id, '_thread.RLock': id, 'builtins.weakref': id}, suppress_st_warning=True)
     def run(self):
         self._setupNodes()
+        self.renderer.render(self.nodes) # First render loads the charts
 
         while self.isRunning:
             if (self._roll(self.disconnectFrequency) and self.numberOfNodes > 1):
@@ -59,6 +63,7 @@ class Orchestrator(Thread):
                 chosenNode.addToTransactionPool(next(self.transactions))
                 self._log(logging.info, f"Sending transaction to {chosenNode.id}...")
 
+            self.renderer.render(self.nodes)
             time.sleep(self.epoch_time / 1_000)
 
         for node in self.nodes:

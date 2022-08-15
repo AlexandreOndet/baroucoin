@@ -1,6 +1,7 @@
 import logging
 from dotenv import load_dotenv
 from pathlib import Path
+from streamlit.scriptrunner import add_script_run_ctx
 from threading import Thread
 
 from app.ChartsRenderer import *
@@ -63,12 +64,19 @@ if __name__ == "__main__":
     logging.addLevelName(logging.ERROR, '[ERROR]')
     logging.addLevelName(logging.CRITICAL, '[CRITICAL]')
 
-    simulation = Orchestrator()
-    renderer = ChartsRenderer(simulation=simulation)
-    t = Thread(target=handle_input)
-    
-    simulation.start()
-    t.start()
+    start_btn_container = st.empty()
+    start_btn = start_btn_container.button("Start simulation", key='1')
+    if start_btn:
+        start_btn = start_btn_container.button("Start simulation", disabled=True, key='2')
 
-    a = animation.FuncAnimation(renderer.fig, renderer.render, interval=simulation.epoch_time, blit=True)
-    plt.show()
+        renderer = ChartsRenderer()
+        simulation = Orchestrator(renderer=renderer)
+        t = Thread(target=handle_input)
+
+        add_script_run_ctx(simulation)
+        add_script_run_ctx(t)
+
+        simulation.start()
+        t.start()
+
+        simulation.join()
