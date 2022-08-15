@@ -24,7 +24,7 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 # Lancement de la simulation et visualisation des graphes
 Prérequis: altair, pandas, streamlit
 
-Démarrer le serveur web Streamlit via `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
+Démarrer le serveur web Streamlit dans un terminal via `run.bat` ou `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
 
 ### Bad message format
 ![bad_message_format error](bad_message_format_error.png)

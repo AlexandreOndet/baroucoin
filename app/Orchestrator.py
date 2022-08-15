@@ -25,17 +25,8 @@ class Orchestrator(Thread):
 
     def __init__(self, renderer: ChartsRenderer):
         super(Orchestrator, self).__init__()
-        self.startingNodes = 3
-        self.maxNodes = 5
-        self.epochTime = 1000  # in milliseconds, control speed of the simulation
-        self.miningDifficulty = 5
 
-        assert self.maxNodes >= self.startingNodes
-        
-        self.transactionFrequency = .5
-        self.disconnectFrequency = .1
-        self.newPeerFrequency = .2
-
+        self.setup()
         self.isRunning = True
         self.isPaused = False
         self.transactions = self._getNextTransaction()
@@ -123,6 +114,18 @@ class Orchestrator(Thread):
     @property
     def numberOfNodes(self) -> int:
         return len(self.nodes)
+
+    def setup(self, startingNodes=3, maxNodes=5, epochTime=1000, miningDifficulty=5, transactionFrequency=.5, disconnectFrequency=.1, newPeerFrequency=.2):
+        self.startingNodes = startingNodes
+        self.maxNodes = maxNodes
+        self.epochTime = epochTime  # in milliseconds, control speed of the simulation
+        self.miningDifficulty = miningDifficulty
+
+        assert self.maxNodes >= self.startingNodes
+        
+        self.transactionFrequency = transactionFrequency
+        self.disconnectFrequency = disconnectFrequency
+        self.newPeerFrequency = newPeerFrequency
     
     @st.cache( # Streamlit cache used for faster rendering of real-time data
         hash_funcs={

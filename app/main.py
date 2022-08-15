@@ -77,15 +77,50 @@ if __name__ == "__main__":
     logging.addLevelName(logging.ERROR, '[ERROR]')
     logging.addLevelName(logging.CRITICAL, '[CRITICAL]')
 
+    # self.startingNodes = 3
+    # self.maxNodes = 5
+    # self.epochTime = 1000  # in milliseconds, control speed of the simulation
+    # self.miningDifficulty = 5
+
+    # assert self.maxNodes >= self.startingNodes
+    
+    # self.transactionFrequency = .5
+    # self.disconnectFrequency = .1
+    # self.newPeerFrequency = .2
+    
+    inputs_empty = st.empty() # Used to clear out the inputs after the simulation starts
+    inputs_container = inputs_empty.container()
+    
+    # Simulation parameters
+    max_nodes_input = inputs_container.number_input("Maximum number of nodes", 2, 10, value=5)
+    starting_nodes_input = inputs_container.number_input("Number of starting nodes", 1, max_nodes_input, value=3)
+    epoch_time_input = inputs_container.number_input("Epoch duration (in milliseconds)", 100, 1000*60*60, value=1000, step=100)
+    mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0., 100., value=5., step=0.5)
+
+    # Random events parameters
+    transaction_frequency_input = inputs_container.slider("Transaction frequency", 0., 1., value=.5, format="%f")
+    disconnect_frequency_input = inputs_container.slider("Disconnect frequency", 0., 1., value=.1, format="%f")
+    new_peer_frequency_input = inputs_container.slider("New peer frequency", 0., 1., value=.2, format="%f")
+
     start_btn_container = st.empty()
     start_btn = start_btn_container.button("Start simulation", key='1')
     if start_btn:
-        start_btn = start_btn_container.button("Start simulation", disabled=True, key='2')
+        inputs_empty.empty()
+        start_btn = start_btn_container.button("Start simulation", key='2', disabled=True)
 
         renderer = ChartsRenderer()
         simulation = Orchestrator(renderer=renderer)
-        t = Thread(target=handle_input)
+        simulation.setup(
+            starting_nodes_input,
+            max_nodes_input,
+            epoch_time_input,
+            mining_difficulty_input,
+            transaction_frequency_input,
+            disconnect_frequency_input,
+            new_peer_frequency_input
+        )
 
+        t = Thread(target=handle_input)
         logging.info("--- Enter simulation commands here ---")
         # Disable message logging for console before starting the simulation
         console_handler.setLevel(logging.ERROR)
