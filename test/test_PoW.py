@@ -1,3 +1,4 @@
+from math import modf
 import time
 import unittest
 import warnings
@@ -13,13 +14,38 @@ class PoWTests(unittest.TestCase):
     def setUpClass(self): # Called before running any test functions
         warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning) # Clear the unclosed sockets warning for tests
 
-    def test_difficulty_amount_of_zeros(self):
+    def test_difficulty_whole(self):
         chain = Blockchain()
         chain.createGenesisBlock()
+        
         PoW = ProofOfWork(1)
         PoW.mine(chain.lastBlock)
         self.assertEqual(chain.lastBlock.getHash()[0:PoW.blockDifficulty], '0' * PoW.blockDifficulty,
-                         f"PoW difficulty broken : hash={chain.lastBlock.getHash()}, difficulty={PoW.blockDifficulty}")
+                         f"PoW whole difficulty broken : hash={chain.lastBlock.getHash()}, difficulty={PoW.blockDifficulty}")
+
+    def test_difficulty_frac(self):
+        chain = Blockchain()
+        chain.createGenesisBlock()
+
+        PoW = ProofOfWork(1.5)
+        PoW.mine(chain.lastBlock)
+        
+        frac, whole = modf(PoW.blockDifficulty)
+        whole = int(whole)
+        self.assertTrue(chain.lastBlock.getHash()[0:whole + 1] == '0' * (whole + 1) or chain.lastBlock.getHash()[0:whole + 1] == '0' * whole + '1',
+                        f"PoW frac difficulty broken : hash={chain.lastBlock.getHash()}, difficulty={PoW.blockDifficulty}")
+
+    def test_difficulty_invalid(self):
+        chain = Blockchain()
+        chain.createGenesisBlock()
+
+        PoW = ProofOfWork(-1)
+        with self.assertRaises(ValueError):
+            PoW.mine(chain.lastBlock)
+
+        PoW = ProofOfWork(1.2)
+        with self.assertRaises(ValueError):
+            PoW.mine(chain.lastBlock)
 
     def test_block_validation_difficulty(self):
         node = FullNode(consensusAlgorithm=False, existing_wallet=Wallet(""))
