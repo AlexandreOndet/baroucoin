@@ -46,6 +46,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.blockchain = Blockchain()
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
         self.consensusAlgorithm = ProofOfWork(difficulty) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
+        self.hardSync = True
         self.isMining = False
         self.max_sync_attempts = 2
         self.peers_server = {} # Key: (HOST, PORT) of FullNode client socket / Value: (HOST, PORT) of Fullnode server socket
@@ -201,7 +202,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.stopMining()
 
         attempt = 1
-        self.hard_sync = hard_sync
+        self.hardSync = hard_sync
         self.synced = SyncState.WAITING
         self.syncWaitForAllPeersThread = None
         
@@ -269,7 +270,7 @@ class FullNode(socketserver.ThreadingTCPServer):
 
         self._log(logging.debug, f"Got {len(self.syncBlockHeightReceivedFromPeer)} block heights from peers: {self.syncBlockHeightReceivedFromPeer}")
 
-        if (self.hard_sync): # Reset blockchain state in case of hard sync
+        if (self.hardSync): # Reset blockchain state in case of hard sync
             self.blockchain.blockChain = []
             self.blockchain.createGenesisBlock()
 

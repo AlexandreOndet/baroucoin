@@ -25,6 +25,12 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 Prérequis: altair, pandas, streamlit
 
 Démarrer le serveur web Streamlit via `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
+
+### Bad message format
+![bad_message_format error](bad_message_format_error.png)
+
+Si une erreur de ce type survient au lancement, simplement quitter la simulation ('q' dans le terminal), fermer la boîte de dialogue et rafraîchir la page (erreur interne de Streamlit).
+
 # Lancement du serveur
 Pour initialiser le serveur (jouant un rôle de DNS central pour simplifier la découvertes des noeuds du réseau), nous utilisons Docker.
 

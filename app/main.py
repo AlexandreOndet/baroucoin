@@ -22,18 +22,30 @@ def handle_input():
     - '+': Increase mining difficulty
     - '-': Decrease mining difficulty
     """
+    st.markdown("### Usage\n"
+        "Run the commands in the console (press a key then <kbd>ENTER</kbd>).\n\n"
+        "Availables commands (case insensitive):\n"
+        "- <kbd>q</kbd> Quit the simulation\n"
+        "- <kbd>a</kbd> Add a new peer (up to the maximum peer capacity of the simulation)\n"
+        "- <kbd>r</kbd> Remove the last added peer from the simulation (can be added back with a/A)\n"
+        "- <kbd>s</kbd> Synchronize all peers to the highest blockchain\n"
+        "- <kbd>+</kbd> Increase mining difficulty\n"
+        "- <kbd>-</kbd> Decrease mining difficulty\n", 
+        unsafe_allow_html=True
+    )
+
     global simulation
     run = True
     while run:
         user_input = ""
-        while (user_input.lower() not in ['q', 'a', 'd', 's', '+', '-']):
+        while (user_input.lower() not in ['q', 'a', 'r', 's', '+', '-']):
             user_input = input()
 
             if (user_input.lower() == 'q'):
                 run = False
             elif (user_input.lower() == 'a'):
                 simulation.addNewNode()
-            elif (user_input.lower() == 'd'):
+            elif (user_input.lower() == 'r'):
                 simulation.removeLastNode()
             elif (user_input.lower() == 's'):
                 simulation.syncAllNodes()
@@ -55,7 +67,8 @@ if __name__ == "__main__":
     logging.basicConfig(
         handlers=[file_handler, console_handler],
         level=logging.DEBUG,
-        format='T+%(relativeCreated)d\t%(levelname)s %(message)s'
+        format='T+%(relativeCreated)d\t%(levelname)s %(message)s',
+        force=True
     )
 
     logging.addLevelName(logging.DEBUG, '[DEBUG]')
@@ -73,6 +86,10 @@ if __name__ == "__main__":
         simulation = Orchestrator(renderer=renderer)
         t = Thread(target=handle_input)
 
+        logging.info("--- Enter simulation commands here ---")
+        # Disable message logging for console before starting the simulation
+        console_handler.setLevel(logging.ERROR)
+        
         add_script_run_ctx(simulation)
         add_script_run_ctx(t)
 
