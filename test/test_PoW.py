@@ -1,5 +1,6 @@
-import unittest
 import time
+import unittest
+import warnings
 
 from app.ProofOfWork import *
 from app.Blockchain import *
@@ -8,6 +9,10 @@ from app.Transaction import *
 
 
 class PoWTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(self): # Called before running any test functions
+        warnings.filterwarnings(action="ignore", message="unclosed", category=ResourceWarning) # Clear the unclosed sockets warning for tests
+
     def test_difficulty_amount_of_zeros(self):
         chain = Blockchain()
         chain.createGenesisBlock()
