@@ -22,7 +22,7 @@ class ProofOfStake(ConsensusAlgorithm, dict):
         self.alreadyFound = False
         base = block.previousHash.encode() + self.node_wallet.address.encode()
         threshold = int(2**256 * self.node_wallet.balance / self.blockDifficulty)
-        
+
         block.nonce = self._get_time_bytes()
         trigger = int.from_bytes(h.sha3_256(base + block.nonce).digest(), 'big')
         while not self.alreadyFound and trigger > threshold:
@@ -30,6 +30,7 @@ class ProofOfStake(ConsensusAlgorithm, dict):
             trigger = int.from_bytes(h.sha3_256(base + block.nonce).digest(), 'big')
 
         block.nonce = int.from_bytes(block.nonce, 'big') # Convet nonce back to int
+
         return not self.alreadyFound
 
     def stopMining(self):

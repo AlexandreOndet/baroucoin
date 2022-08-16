@@ -92,10 +92,11 @@ if __name__ == "__main__":
     inputs_container = inputs_empty.container()
     
     # Simulation parameters
+    consensus_input = inputs_container.selectbox("Consensus algorithm", ("PoW (Proof-Of-Work)", "PoS (Proof-Of-Stake)"))
     max_nodes_input = inputs_container.number_input("Maximum number of nodes", 2, 10, value=5)
-    starting_nodes_input = inputs_container.number_input("Number of starting nodes", 1, max_nodes_input, value=3)
+    starting_nodes_input = inputs_container.number_input("Number of starting nodes", 1, int(max_nodes_input), value=3)
     epoch_time_input = inputs_container.number_input("Epoch duration (in milliseconds)", 100, 1000*60*60, value=1000, step=100)
-    mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0., 100., value=5., step=0.5)
+    mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0., 10000., value=5., step=0.5)
 
     # Random events parameters
     transaction_frequency_input = inputs_container.slider("Transaction frequency", 0., 1., value=.5, format="%f")
@@ -117,7 +118,8 @@ if __name__ == "__main__":
             mining_difficulty_input,
             transaction_frequency_input,
             disconnect_frequency_input,
-            new_peer_frequency_input
+            new_peer_frequency_input,
+            consensus_input[:3]
         )
 
         t = Thread(target=handle_input)

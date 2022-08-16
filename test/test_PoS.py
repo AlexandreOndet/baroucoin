@@ -51,5 +51,24 @@ class PoSTests(unittest.TestCase):
         self.assertEqual(w_alice.balance, 100, f"Wrong balance for Alice: expected 100 got {w_alice.balance} coins")
         self.assertEqual(w_bob.balance, 2, f"Wrong balance for Bob: expected 2 got {w_bob.balance} coins")
 
+    def test_block_validation(self):
+        w_alice = Wallet("Alice")
+        w_bob = Wallet("Bob")
+        
+        blockchain = Blockchain()
+        blockchain.createGenesisBlock(True, beneficiaries=[w_alice.address, w_alice.address]) # Alice's wallet gets two coins at the start
+        w_alice.balance = 2
+
+        node_alice = FullNode(consensusAlgorithm=True, existing_wallet=w_alice)
+        block = node_alice.createNewBlock()
+        node_alice.blockchain.blockChain[0] = blockchain.blockChain[0]
+        if node_alice.consensusAlgorithm.mine(block):
+            node_alice.blockchain.addBlock(block)
+
+        node_bob = FullNode(consensusAlgorithm=True, existing_wallet=w_bob)
+        node_bob.blockchain.blockChain[0] = blockchain.blockChain[0]
+        
+        self.assertTrue(node_bob.validateNewBlock(node_alice.blockchain.lastBlock), f"Bob could not validate Alice's new block")
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

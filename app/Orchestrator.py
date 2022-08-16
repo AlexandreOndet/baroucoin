@@ -63,15 +63,22 @@ class Orchestrator(Thread):
     def _setupNodes(self):
         self.nodes = [
             FullNode(
-                consensusAlgorithm=False,
+                consensusAlgorithm=self.isPos(),
                 difficulty=self.miningDifficulty, 
                 existing_wallet=Wallet(str(i)), 
                 server_address=("127.0.0.1", 10000 + i)
             ) for i in range(self.startingNodes)
         ]
 
-        for node in self.nodes:  # Initiate server on all nodes
-            Thread(target=node.serve_forever).start()
+        # Setup PoS genesis chain for sending coins to the starting nodes in order to mine
+        genesisChain = Blockchain()
+        genesisChain.createGenesisBlock(True, beneficiaries=[n.wallet.address for n in self.nodes])
+
+        for node in self.nodes:
+            if self.isPos(): # If PoS, make all starting nodes use the same chain
+                node.blockchain.blockChain[0] = genesisChain.blockChain[0]
+                node.wallet.balance = 1
+            Thread(target=node.serve_forever).start() # Initiate server on all nodes
 
         for i in range(self.numberOfNodes - 1):  # Make nodes all connected to each other
             node = self.nodes[i]
@@ -115,7 +122,21 @@ class Orchestrator(Thread):
     def numberOfNodes(self) -> int:
         return len(self.nodes)
 
-    def setup(self, startingNodes=3, maxNodes=5, epochTime=1000, miningDifficulty=5, transactionFrequency=.5, disconnectFrequency=.1, newPeerFrequency=.2):
+    def isPos(self) -> bool:
+        return self.consensus == "PoS"
+
+    def setup(
+        self, 
+        startingNodes: int=3, 
+        maxNodes: int=5, 
+        epochTime: int=1000, 
+        miningDifficulty: float=5, 
+        transactionFrequency: float=.5, 
+        disconnectFrequency: float=.1, 
+        newPeerFrequency: float=.2, 
+        consensus: str="PoW"
+    ):
+        self.consensus = consensus
         self.startingNodes = startingNodes
         self.maxNodes = maxNodes
         self.epochTime = epochTime  # in milliseconds, control speed of the simulation
@@ -173,7 +194,7 @@ class Orchestrator(Thread):
 
         self._log(logging.info, f"Adding new peer to network...")
         new_node = FullNode(
-            consensusAlgorithm=False,
+            consensusAlgorithm=self.isPos(),
             difficulty=self.miningDifficulty,
             existing_wallet=Wallet(str(self.numberOfNodes)),
             server_address=("127.0.0.1", 10000 + self.numberOfNodes) # TODO: handle invalid/busy socket
@@ -213,9 +234,9 @@ class Orchestrator(Thread):
         self._log(logging.info, "Syncing finished [success]")
 
     def increaseDifficulty(self):
-        self.miningDifficulty += 0.5
+        self.miningDifficulty += 0.5 * 100 if self.isPos() else 1
         self._updateDifficulty()
 
     def decreaseDifficulty(self):
-        self.miningDifficulty -= 0.5
+        self.miningDifficulty -= 0.5 * 100 if self.isPos() else 1
         self._updateDifficulty()

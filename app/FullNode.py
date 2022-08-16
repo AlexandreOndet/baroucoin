@@ -47,7 +47,6 @@ class FullNode(socketserver.ThreadingTCPServer):
                                                  RequestHandlerClass)  # Initialize the TCP server for handling peer requests
         self.blockchain = Blockchain()
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
-        self.consensusAlgorithm = ProofOfWork(difficulty) if not consensusAlgorithm else ProofOfStake(difficulty)
         self.hardSync = True
         self.isMining = False
         self.max_sync_attempts = 2
@@ -58,6 +57,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.transaction_pool = []
         self.wallet = existing_wallet
         
+        self.consensusAlgorithm = ProofOfWork(difficulty) if not consensusAlgorithm else ProofOfStake(difficulty, self.wallet)
         self.blockchain.createGenesisBlock(self.isPoS())
 
     def server_close(self):
@@ -98,6 +98,7 @@ class FullNode(socketserver.ThreadingTCPServer):
             found = self.consensusAlgorithm.mine(new_block)
             if found: # TODO: See if needs to clear transaction pool if found
                 self.blockchain.addBlock(new_block)
+                self.updateBalance()
                 self.client.broadcast({"newBlock": new_block.toJSON()})
 
     @property
@@ -133,6 +134,9 @@ class FullNode(socketserver.ThreadingTCPServer):
     def computeReward(self) -> int:
         return 1  # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
+    def updateBalance(self):
+        self.wallet.balance = self.blockchain.getBalance(self.wallet.address) # Update this node balance
+
     @_requireSynced()
     def startMining(self):
         """
@@ -140,6 +144,8 @@ class FullNode(socketserver.ThreadingTCPServer):
         Can be called directly for starting nodes or through 'syncWithPeers' for new joining nodes.
         """
         if not self.isMining:
+            if self.isPoS() and self.wallet.balance == 0: # Don't mine if balance is zero for PoS
+                return
             self.miningThread = Thread(target=self._mine)
             self.miningThread.start()
 
@@ -397,7 +403,7 @@ class FullNode(socketserver.ThreadingTCPServer):
             self.consensusAlgorithm.stopMining() # Stop mining for this block and start mining next one
             self.blockchain.addBlock(block)
             self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
-            self.wallet.balance = self.blockchain.getBalance(self.wallet.address) # Update this node balance
+            self.updateBalance()
         else:
             self._log(logging.warning,
                       f"Block #{block.height} invalid: hash={block.getHash()}, currentHeight={self.blockchain.currentHeight}")

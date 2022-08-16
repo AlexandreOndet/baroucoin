@@ -9,11 +9,12 @@ class ChartsRenderer():
     """Renders the charts and simulation data in real-time."""
     def __init__(self):
         super(ChartsRenderer, self).__init__()
-        self.df_nodes = pd.DataFrame(columns=['nodeId', 'height', 'epoch'])
+        self.df_nodes = pd.DataFrame(columns=['nodeId', 'height', 'balance', 'epoch'])
         self.epoch = 0
         
-        self.chart_display = st
         self.chart_title = st
+        self.height_chart_display = st
+        self.balance_chart_display = st		
         
         self.log_display = st
         self.log_title = st
@@ -49,7 +50,8 @@ class ChartsRenderer():
 
         # Charts
         self.chart_title = self.chart_title.markdown("### Charts")
-        self.chart_display = self.chart_display.altair_chart(self._get_blockchain_height_chart())
+        self.height_chart_display = self.height_chart_display.altair_chart(self._get_blockchain_height_chart())
+        self.balance_chart_display = self.balance_chart_display.altair_chart(self._get_peers_balance_chart())
 
         # Live data text
         self.live_data_title = self.live_data_title.markdown("### Live data")
@@ -95,7 +97,18 @@ class ChartsRenderer():
             height=600,
         )
 
+    def _get_peers_balance_chart(self):
+        return alt.Chart(self.df_nodes).mark_bar().encode(
+            x=alt.X('nodeId:N'),
+            y=alt.Y('max(balance):Q', axis=alt.Axis(tickMinStep=1)),
+            color=alt.Color('nodeId:N', legend=alt.Legend()),
+        ).properties(
+            title="Live peers balances",
+            width=700,
+            height=600,
+        )
+
     def _updateData(self, nodes: list):
         self.epoch += 1
         for node in nodes:
-            self.df_nodes.loc[len(self.df_nodes)] = [node.id, node.blockchain.currentHeight, self.epoch]
+            self.df_nodes.loc[len(self.df_nodes)] = [node.id, node.blockchain.currentHeight, node.wallet.balance, self.epoch]
