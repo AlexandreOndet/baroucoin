@@ -17,13 +17,16 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [x] Actualisation dynamique de la difficulté par les pairs
 ### Amélioration du code
 - [ ] Remplacer le booléen 'consensusAlgorithm' pour être plus explicite (énumération ?)
-- [ ] Documentation des tests
-- [ ] Documentation des classes
-- [ ] Documentation des fonctions
+- [x] Documentation des tests
+- [x] Documentation des classes
+- [x] Documentation des fonctions
 
-# Lancement de la simulation et visualisation des graphes
-Prérequis: altair, pandas, streamlit
+# Fonctionnement
+Cloner le repo Github
+`git clone `
+et effectuer les commands depuis la racine du dossier (`baroucoin/`).
 
+## Lancement de la simulation et visualisation des graphes
 Démarrer le serveur web Streamlit dans un terminal via `run.bat` ou `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
 
 ### Bad message format
