@@ -6,8 +6,7 @@ from cryptography.hazmat.primitives.serialization import *
 
 
 class Wallet(object):
-    """Wallet associated with a full node."""
-
+    """Wallet associated with a FullNode."""
     def __init__(self, seed: str, display_name=""):
         super(Wallet, self).__init__()
         self.display_name = display_name
@@ -22,7 +21,8 @@ class Wallet(object):
         return ec.derive_private_key(int.from_bytes(dk, "big"),
                                      ec.SECP256K1())  # An EllipticCurvePrivateKey object (see https://cryptography.io/en/latest/hazmat/primitives/asymmetric/ec/#cryptography.hazmat.primitives.asymmetric.ec.EllipticCurvePrivateKey)
 
-    def generate_address(self) -> bytes:  # Address is a base58 encoded hash derived from the public key
+    def generate_address(self) -> bytes:
+        """Generates a base58 encoded hash derived from the public key."""
         digest = hashes.Hash(hashes.SHA256())
         digest.update(self.secret_key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo))
         return base58.b58encode(digest.finalize()).decode('utf-8') # Store address as string

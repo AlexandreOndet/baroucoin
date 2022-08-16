@@ -8,11 +8,11 @@ from app.Block import *
 from app.TransactionStore import *
 
 class TCPHandler(socketserver.BaseRequestHandler):
-    """
-    Handler for a new peer connection received by a node. Will keep parsing data until the connection is closed either by the peer or by the node.
+    """Handler for a new peer connection received by a node. Will keep parsing data until the connection is closed either by the peer or by the node.
 
     See https://docs.python.org/3/library/socketserver.html#request-handler-objects for reference.
     """
+    
     def handle(self):
         # JSON Remote Procedure Calls (JSON-RPC) allowed from one peer to another. Enables the exchange of informations between peers.
         self.whitelistedFunctions = ['connect', 'newBlock', 'end', 'getLastBlock', 'listLastBlocks', 'getInventory', 'updateInventory']  # TODO : Load from env ?

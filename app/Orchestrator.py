@@ -6,10 +6,9 @@ from app.FullNode import *
 from app.ChartsRenderer import *
 
 class Orchestrator(Thread):
-    """
-    Represents the simulation as a threaded class. 
-    The simulation runs until explicit shutdown through user input. 
-    Parameters of the simulation can be edited in the __init__ method.
+    """Represents the simulation as a threaded class. 
+    
+    The simulation runs until explicit shutdown through user input in the main thread.
 
     Attributes:
     - startingNodes: number of peers at the start of simulation
@@ -234,9 +233,9 @@ class Orchestrator(Thread):
         self._log(logging.info, "Syncing finished [success]")
 
     def increaseDifficulty(self):
-        self.miningDifficulty += 0.5 * 100 if self.isPos() else 1
+        self.miningDifficulty += 0.5 * 1000 if self.isPos() else 1
         self._updateDifficulty()
 
     def decreaseDifficulty(self):
-        self.miningDifficulty -= 0.5 * 100 if self.isPos() else 1
+        self.miningDifficulty -= 0.5 * 1000 if self.isPos() else 1
         self._updateDifficulty()

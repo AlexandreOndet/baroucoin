@@ -8,7 +8,7 @@ from app.Block import *
 from app.TransactionStore import *
 
 class Blockchain:
-    """Represents the blockchain."""
+    """Represents the blockchain as a list of blocks."""
     def __init__(self):
         self.blockChain = []
 
@@ -19,6 +19,13 @@ class Blockchain:
         return str(self.blockChain)
 
     def createGenesisBlock(self, consensus: bool=False, beneficiaries: list=[], initial_supply=100_000):
+        """Set up the first block in the blockchain.
+
+        :param consensus: indicates the consensus used for the first block
+        :param beneficiaries: a list of addresses who will receive 1 coin in a transaction from the first block (useful for starting a PoS blockchain)
+        :param initial_supply: the amount of coins created on the first block mined
+        """
+
         if len(beneficiaries) > initial_supply:
             raise ValueError("Number of beneficiaries cannot exceed total initial supply")
 
@@ -30,17 +37,18 @@ class Blockchain:
         self.addBlock(genesisBlock)
 
     @property
-    def lastBlock(self):
+    def lastBlock(self) -> Block:
         return self.blockChain[-1]
 
     @property
-    def currentHeight(self):
+    def currentHeight(self) -> int:
         return self.lastBlock.height
 
     def addBlock(self, block: Block):
         self.blockChain.append(block)
 
     def getBalance(self, address: str) -> int:
+        """Read through every block in the chain for transactions and mining rewards to compute the balance of a given address."""
         balance = 0
         for block in self.blockChain:
             if block.miner == address:

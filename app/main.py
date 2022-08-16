@@ -11,8 +11,7 @@ load_dotenv()
 app_dir = Path(__file__).parent
 
 def handle_input():
-    """
-    Handles the console input for the simulation (commands are case-insensitive).
+    """Handles the console input for the simulation (commands are case-insensitive).
 
     The commands are:
     - 'q/Q': Quit the simulation
@@ -22,6 +21,7 @@ def handle_input():
     - '+': Increase mining difficulty
     - '-': Decrease mining difficulty
     """
+
     st.markdown("### Usage\n"
         "Run the commands in the console (press a key then <kbd>ENTER</kbd>).\n\n"
         "Availables commands (case insensitive):\n"
@@ -76,17 +76,6 @@ if __name__ == "__main__":
     logging.addLevelName(logging.WARNING, '[!]')
     logging.addLevelName(logging.ERROR, '[ERROR]')
     logging.addLevelName(logging.CRITICAL, '[CRITICAL]')
-
-    # self.startingNodes = 3
-    # self.maxNodes = 5
-    # self.epochTime = 1000  # in milliseconds, control speed of the simulation
-    # self.miningDifficulty = 5
-
-    # assert self.maxNodes >= self.startingNodes
-    
-    # self.transactionFrequency = .5
-    # self.disconnectFrequency = .1
-    # self.newPeerFrequency = .2
     
     inputs_empty = st.empty() # Used to clear out the inputs after the simulation starts
     inputs_container = inputs_empty.container()

@@ -5,8 +5,7 @@ import json
 from app.TransactionStore import *
 
 class Block:
-    """
-    Represents a blockchain block.
+    """Represents a blockchain block.
 
     :param timestamp:
     :param transactionStore: stores the list of transactions in the block
@@ -17,6 +16,7 @@ class Block:
     :param reward: miner's reward for mining the block
     :param nonce: used for PoW for modifying the block hash / used for PoS for storing the timestamp validating the right to mine the new block
     """
+    
     def __init__(self, timestamp: float, transactionStore: TransactionStore, height: int, consensusAlgorithm: bool,
                  previousHash: str, miner: str, reward: int, nonce: int=0):
         self.timestamp = timestamp

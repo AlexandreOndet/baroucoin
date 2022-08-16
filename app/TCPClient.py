@@ -15,7 +15,6 @@ DNS_SERVER_IP = os.getenv("DNS_SERVER_IP")
 
 class TCPClient(object):
     """Helper class for managing peers socket interactions."""
-
     def __init__(self, server_addr):
         super(TCPClient, self).__init__()
         # TODO: simplifiy peer structure using only sockets attributes (see https://docs.python.org/3/library/socket.html?highlight=socket#socket.socket.getpeername)
@@ -100,10 +99,10 @@ class TCPClient(object):
                 logging.error(f"Unexpected error during broadcasting: {e}")
 
     def _encapsulateMsg(self, msg: str) -> bytes:
-        """
-        Encaspulate the 'msg' data by converting it to base64 and wrapping it in a JSON object with special character delimiter '|' for separating messages.
+        """Encaspulate the 'msg' data by converting it to base64 and wrapping it in a JSON object with special character delimiter '|' for separating messages.
 
         This system allows for easy parsing of multiple messages coming on the socket receive buffer. 
         """
+        
         # TODO: Could add a checksum and replace the use of special character with a data length prefix
         return (json.dumps({'msg': base64.b64encode(msg.encode('utf-8')).decode('utf-8')}) + '|').encode('utf-8')

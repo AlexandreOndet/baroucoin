@@ -5,17 +5,24 @@ from app.ConsensusAlgorithm import *
 from app.TreeLeaf import *
 
 class ProofOfStake(ConsensusAlgorithm, dict):
+    """Proof of Stake consensus based on a node's balance and difficulty setting for creating a target threshold before mining a block."""
     def __init__(self, blockDifficulty, wallet):
         super(ProofOfStake, self).__init__()
-        # TODO build the tree
         self.blockDifficulty = blockDifficulty
-        self.rootNode = TreeLeaf()
         self.node_wallet = wallet
+        # self.rootNode = TreeLeaf() # TODO build the tree
 
     def _get_time_bytes(self) -> bytes:
         return int(time.time() * 10**7).to_bytes(8, 'big')
 
     def mine(self, block):
+        """Compares a hash value updated by a timestamp to a threshold based on the node's wallet balance and a difficulty setting.
+
+        The hash value is based on the previous block hash, the node's wallet address and a current timestamp.
+        If this value is below the threshold, the node can mine the next block. 
+        The greater the balance, the higher the threshold and hence, the more chances the node can mine the next blocks.
+        """
+        
         if (self.node_wallet.balance == 0):
             raise ValueError("Node can't mine if its balance is zero")
 
@@ -36,15 +43,15 @@ class ProofOfStake(ConsensusAlgorithm, dict):
     def stopMining(self):
         self.alreadyFound = True
 
-    def pickTheWinner(self, number):
-        return self.pickTheWinnerRecursive(number, self.rootNode)
+    # def pickTheWinner(self, number):
+    # 	return self.pickTheWinnerRecursive(number, self.rootNode)
 
-    def pickTheWinnerRecursive(self, number, node: TreeLeaf):
-        if node.leftChild is None and node.rightChild is None:
-            return node.value
-        elif node.rightChild is None:
-            return self.pickTheWinnerRecursive(self, number, node.leftChild)  # if there's only one child
-        elif node.leftChild.number > number:
-            return self.pickTheWinnerRecursive(self, number, node.leftChild)
-        else:
-            return self.pickTheWinnerRecursive(self, number, node.rightChild)
+    # def pickTheWinnerRecursive(self, number, node: TreeLeaf):
+    # 	if node.leftChild is None and node.rightChild is None:
+    # 		return node.value
+    # 	elif node.rightChild is None:
+    # 		return self.pickTheWinnerRecursive(self, number, node.leftChild)  # if there's only one child
+    # 	elif node.leftChild.number > number:
+    # 		return self.pickTheWinnerRecursive(self, number, node.leftChild)
+    # 	else:
+    # 		return self.pickTheWinnerRecursive(self, number, node.rightChild)

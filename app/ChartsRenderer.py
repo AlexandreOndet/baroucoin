@@ -38,10 +38,9 @@ class ChartsRenderer():
             self.log_display = self.log_display.error(msg)
 
     def render(self, data: dict):
-        """
-        Refreshes the display using the latest data provided by the simulation.
+        """Refreshes the web page view using the latest data provided by the simulation.
 
-        :param data: a dict containing the simulation's starting parameters and current nodes.
+        :param data: a dict containing the simulation's starting parameters and current peers.
         """
         
         # Keep only synced nodes for updating data
