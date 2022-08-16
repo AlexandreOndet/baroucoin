@@ -8,18 +8,17 @@ class Block:
     """
     Represents a blockchain block.
 
-    Attributes:
-    - timestamp
-    - transactionStore: stores the list of transactions in the block
-    - height
-    - consensusAlgorithm: stores the consensus used for the blockchain
-    - previousHash
-    - miner: address who mined the block
-    - reward: miner's reward for mining the block
-    - nonce
+    :param timestamp:
+    :param transactionStore: stores the list of transactions in the block
+    :param height:
+    :param consensusAlgorithm: stores the consensus used for the blockchain
+    :param previousHash:
+    :param miner: address who mined the block
+    :param reward: miner's reward for mining the block
+    :param nonce: used for PoW for modifying the block hash / used for PoS for storing the timestamp validating the right to mine the new block
     """
-    def __init__(self, timestamp, transactionStore: TransactionStore, height, consensusAlgorithm: bool,
-                 previousHash, miner, reward, nonce=0):
+    def __init__(self, timestamp: float, transactionStore: TransactionStore, height: int, consensusAlgorithm: bool,
+                 previousHash: str, miner: str, reward: int, nonce: int=0):
         self.timestamp = timestamp
         self.transactionStore = transactionStore
         self.height = height  # height in the blockchain, each new blocks increments it

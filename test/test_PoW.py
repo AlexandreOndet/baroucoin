@@ -169,6 +169,5 @@ class PoWTests(unittest.TestCase):
         node.blockchain.addBlock(b)  # set up a transaction to have a valid output later
         return node
 
-
 if __name__ == '__main__':
     unittest.main(verbosity=2)

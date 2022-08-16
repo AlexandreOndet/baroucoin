@@ -6,7 +6,7 @@ from typing import Tuple
 from FullNode import *
 
 class ChartsRenderer():
-    """Renders the charts in real-time."""
+    """Renders the charts and simulation data in real-time."""
     def __init__(self):
         super(ChartsRenderer, self).__init__()
         self.df_nodes = pd.DataFrame(columns=['nodeId', 'height', 'epoch'])
@@ -44,20 +44,20 @@ class ChartsRenderer():
         """
         
         # Keep only synced nodes for updating data
-        nodes = [n for n in data['nodes'] if n.synced == SyncState.FULLY_SYNCED or n.synced == SyncState.ALREADY_SYNCED]
+        nodes = [n for n in data['nodes'] if n.isNodeSynced()]
         self._updateData(nodes)
 
         # Charts
         self.chart_title = self.chart_title.markdown("### Charts")
-        self.chart_display = self.chart_display.altair_chart(self._plot())
+        self.chart_display = self.chart_display.altair_chart(self._get_blockchain_height_chart())
 
         # Live data text
         self.live_data_title = self.live_data_title.markdown("### Live data")
         
-        live_data_text = "Connected peers: " + " | ".join([n.id for n in nodes]) + f" ({len(nodes)}/{data['maxNodes']} nodes)\n"
-        
         (mining_epoch_rate, mining_time_rate) = self._get_block_mining_rate(data['epochTime'])
         (mining_epoch_rate, mining_time_rate) = (round(mining_epoch_rate, 2), round(mining_time_rate, 2))
+        
+        live_data_text = "Connected peers: " + " | ".join([n.id for n in nodes]) + f" ({len(nodes)}/{data['maxNodes']} nodes)\n"
         live_data_text += "Mining difficulty: " + str(data['miningDifficulty']) + "\n"
         self.live_data_display = self.live_data_display.text(live_data_text)
 
@@ -74,7 +74,7 @@ class ChartsRenderer():
 
         self.metrics_container[1] = self.metrics_container[1].metric(
             "Average blocks per epoch", 
-            mining_time_rate, 
+            mining_epoch_rate, 
             delta=round(mining_epoch_rate - self.previous_mining_epoch_rate, 2), 
         )
         self.previous_mining_epoch_rate = mining_epoch_rate
@@ -84,7 +84,7 @@ class ChartsRenderer():
         max_height = self.df_nodes[self.df_nodes.epoch == self.epoch]['height'].max()
         return (max_height/self.epoch, epochTime * max_height/self.epoch/1000)
 
-    def _plot(self):
+    def _get_blockchain_height_chart(self):
         return alt.Chart(self.df_nodes).mark_line().encode(
             x=alt.X('epoch:Q', axis=alt.Axis(tickMinStep=1)), 
             y=alt.Y('height:Q', axis=alt.Axis(tickMinStep=1)),

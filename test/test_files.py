@@ -9,6 +9,7 @@ class FilesTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.blockchain = Blockchain()
+        cls.blockchain.createGenesisBlock()
         cls.json_filename = 'blockchain.json.temp' # Change file extension to prevent accidentaly messing with a real blockchain JSON file
         cls.block_generator = cls._generate_block(cls, cls.blockchain.lastBlock)
 
@@ -50,13 +51,12 @@ class FilesTests(unittest.TestCase):
         Path("sub/folder").rmdir()
         Path("sub").rmdir()
 
-    '''
-        Verifies a shorter blockchain is not saved without setting overwrite=True
-    '''
     def test_blockchain_save_json_height_check(self):
+        """Verifies a shorter blockchain is not saved without setting overwrite=True."""
         self.assertTrue(self.blockchain.saveToJSON(self.json_filename, overwrite=True))
         
         wont_save = Blockchain()
+        wont_save.createGenesisBlock()
         wont_save_block_generator = self._generate_block(wont_save.lastBlock)
 
         for _ in range(10): # Generate fewer blocks than the original blockchain
@@ -75,6 +75,7 @@ class FilesTests(unittest.TestCase):
 
     def test_blockchain_load_json(self):
         copy = Blockchain()
+        copy.createGenesisBlock()
 
         non_existing_file = 'doesnotexist'
         if Path(non_existing_file).is_file(): # If file exists, delete it
@@ -112,7 +113,7 @@ class FilesTests(unittest.TestCase):
                 timestamp=time.time(), 
                 transactionStore=TransactionStore(), 
                 height=lastBlock.height + 1,
-                consensusAlgorithm=True, 
+                consensusAlgorithm=False, 
                 previousHash=lastBlock.getHash(), 
                 miner=0,
                 reward=0, 
@@ -121,12 +122,12 @@ class FilesTests(unittest.TestCase):
             yield block
             lastBlock = block
 
-    '''
+    def _check_blockchain_equality(self, a : Blockchain, b : Blockchain) -> int:
+        """
         Returns index of deviation (block different in the two blockchains).
         Equal => i == len(chain_a) == len(chain_b) 
         Not Equal => i == 0 or i == index of divergent block 
-    '''
-    def _check_blockchain_equality(self, a : Blockchain, b : Blockchain) -> int:
+        """
         i = 0
         chain_a, chain_b = (a.blockChain, b.blockChain)
         if (len(chain_a) != len(chain_b)):

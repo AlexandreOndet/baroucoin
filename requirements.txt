@@ -1,8 +1,8 @@
-altair>=4.2.0
-base58>=2.1.1
-cryptography>=3.4.7
-fastapi>=0.79.0
-pandas>=1.4.3
-python-dotenv>=0.20.0
-requests>=2.26.0
-streamlit>=1.11.1
+altair~=4.2.0
+base58~=2.1.1
+cryptography~=3.4.7
+fastapi~=0.79.0
+pandas~=1.4.3
+python-dotenv~=0.20.0
+requests~=2.26.0
+streamlit~=1.11.1

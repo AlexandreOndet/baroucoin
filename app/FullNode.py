@@ -1,3 +1,4 @@
+import hashlib as h
 import logging
 import json
 import socketserver
@@ -10,6 +11,7 @@ from typing import Tuple
 from app.Block import *
 from app.Blockchain import *
 from app.ProofOfWork import *
+from app.ProofOfStake import *
 from app.TCPClient import *
 from app.TCPHandler import *
 from app.Transaction import *
@@ -45,7 +47,7 @@ class FullNode(socketserver.ThreadingTCPServer):
                                                  RequestHandlerClass)  # Initialize the TCP server for handling peer requests
         self.blockchain = Blockchain()
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
-        self.consensusAlgorithm = ProofOfWork(difficulty) if not consensusAlgorithm else None  # TODO : Change to ProofOfStake and set difficulty accordingly
+        self.consensusAlgorithm = ProofOfWork(difficulty) if not consensusAlgorithm else ProofOfStake(difficulty)
         self.hardSync = True
         self.isMining = False
         self.max_sync_attempts = 2
@@ -55,6 +57,8 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.synced = SyncState.FULLY_SYNCED # Consider initial nodes fully synced
         self.transaction_pool = []
         self.wallet = existing_wallet
+        
+        self.blockchain.createGenesisBlock(self.isPoS())
 
     def server_close(self):
         """Overwrite TCPServer implementation for cleaning up on server shutdown."""
@@ -100,6 +104,12 @@ class FullNode(socketserver.ThreadingTCPServer):
     def id(self):
         return self.wallet.address[:6]
 
+    def isPoW(self):
+        return type(self.consensusAlgorithm).__name__ == "ProofOfWork"
+
+    def isPoS(self):
+        return type(self.consensusAlgorithm).__name__ == "ProofOfStake"
+
     def addToTransactionPool(self, t: Transaction):
         self.transaction_pool.append(t)
 
@@ -115,7 +125,7 @@ class FullNode(socketserver.ThreadingTCPServer):
             timestamp=time.time(),
             transactionStore=TransactionStore([t for t in self.transaction_pool]),
             height=previous_block.height + 1,
-            consensusAlgorithm=False,
+            consensusAlgorithm=self.isPoS(),
             previousHash=previous_block.getHash(),
             miner=self.wallet.address,
             reward=self.computeReward())
@@ -173,14 +183,21 @@ class FullNode(socketserver.ThreadingTCPServer):
                 or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
                 or newBlock.reward != self.computeReward()):
             return False
-        frac, whole = modf(self.consensusAlgorithm.blockDifficulty)
-        whole = int(whole)
-        if frac == 0:
-            if newBlock.getHash()[0:whole] != '0' * whole:
+
+        if self.isPoW():
+            frac, whole = modf(self.consensusAlgorithm.blockDifficulty)
+            whole = int(whole)
+            if frac == 0:
+                if newBlock.getHash()[0:whole] != '0' * whole:
+                    return False
+            elif frac == 0.5:
+                if newBlock.getHash()[0:whole + 1] != '0' * whole + '1' and newBlock.getHash()[0:whole + 1] != '0' * (whole + 1):
+                    return False
+        elif self.isPoS():
+            to_hash = newBlock.previousHash.encode() + newBlock.miner.encode() + newBlock.nonce.to_bytes(8, 'big')
+            if int.from_bytes(h.sha3_256(to_hash).digest(), 'big') > int(2**256 * self.blockchain.getBalance(newBlock.miner) * self.consensusAlgorithm.blockDifficulty):
                 return False
-        elif frac == 0.5:
-            if newBlock.getHash()[0:whole + 1] != '0' * whole + '1' and newBlock.getHash()[0:whole + 1] != '0' * (whole + 1):
-                return False
+
         return all([self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
 
     def isNodeSynced(self):
@@ -380,13 +397,7 @@ class FullNode(socketserver.ThreadingTCPServer):
             self.consensusAlgorithm.stopMining() # Stop mining for this block and start mining next one
             self.blockchain.addBlock(block)
             self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
-            for transaction in block.transactionStore:
-                for sender in transaction.senders:
-                    if sender[0] == self.wallet.address:
-                        self.wallet.removeFromBalance(sender[1])
-                for receiver in transaction.receivers:
-                    if receiver[0] == self.wallet.address:
-                        self.wallet.addToBalance(receiver[1])
+            self.wallet.balance = self.blockchain.getBalance(self.wallet.address) # Update this node balance
         else:
             self._log(logging.warning,
                       f"Block #{block.height} invalid: hash={block.getHash()}, currentHeight={self.blockchain.currentHeight}")

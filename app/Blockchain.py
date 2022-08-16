@@ -11,7 +11,6 @@ class Blockchain:
     """Represents the blockchain."""
     def __init__(self):
         self.blockChain = []
-        self.createGenesisBlock()
 
     def __str__(self):
         return str(self.blockChain)
@@ -19,10 +18,16 @@ class Blockchain:
     def __repr__(self):
         return str(self.blockChain)
 
-    def createGenesisBlock(self):
-        genesisBlock = Block(0, TransactionStore(), 0, False, "0", "0", 100)
+    def createGenesisBlock(self, consensus: bool=False, beneficiaries: list=[], initial_supply=100_000):
+        if len(beneficiaries) > initial_supply:
+            raise ValueError("Number of beneficiaries cannot exceed total initial supply")
 
-        self.blockChain.append(genesisBlock)
+        genesisBlock = Block(time.time(), TransactionStore(), 0, consensus, "0", "0", initial_supply)
+
+        for address in beneficiaries:
+            genesisBlock.transactionStore.addTransaction(Transaction(senders=[("0", 1)], receivers=[(address, 1)]))
+        
+        self.addBlock(genesisBlock)
 
     @property
     def lastBlock(self):
@@ -34,6 +39,22 @@ class Blockchain:
 
     def addBlock(self, block: Block):
         self.blockChain.append(block)
+
+    def getBalance(self, address: str) -> int:
+        balance = 0
+        for block in self.blockChain:
+            if block.miner == address:
+                balance += block.reward
+
+            for transaction in block.transactionStore.transactions:
+                for (sender, amount) in transaction.senders:
+                    if sender == address:
+                        balance -= amount
+                for (receiver, amount) in transaction.receivers:
+                    if receiver == address:
+                        balance += amount
+
+        return balance
 
     def loadFromJSON(self, file: Union[str, bytes], overwrite=False) -> bool:
         lastSavedBlockHeight = self.currentHeight
