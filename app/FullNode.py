@@ -44,8 +44,24 @@ class FullNode(socketserver.ThreadingTCPServer):
                  difficulty=1,
                  server_address: Tuple[str, int] = ('127.0.0.1', 13337),
                  RequestHandlerClass: socketserver.BaseRequestHandler = TCPHandler):
-        socketserver.ThreadingTCPServer.__init__(self, server_address,
-                                                 RequestHandlerClass)  # Initialize the TCP server for handling peer requests
+        # Initialize the TCP server for handling peer requests
+        super(socketserver.ThreadingTCPServer, self).__init__(server_address, RequestHandlerClass, bind_and_activate=False)
+        
+        """Manually initialize the server to fix a Linux bug preventing the reuse of a socket address even with allow_reuse_address = True.
+
+        For some unknown reason, the implementation of socketserver.py downloaded from Python's website (https://www.python.org/downloads/source/) 
+        is different from the CPython github repo (https://github.com/python/cpython) implementation which sets both SO_REUSEADDR and SO_REUSEPORT
+        in order to reuse sockets (see https://github.com/python/cpython/blob/d8c07f8cb4eebbe4ed0f76ba98024313f76a181c/Lib/socketserver.py#L468-L47 and
+        compare to your local Python source e.g. /usr/local/lib/python3.10/socketserver.py). 
+        
+        Hence, we do the same as the Github implementation, setting the sockopt manually and calling bind/activate.
+        """
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        if hasattr(socket, "SO_REUSEPORT"): # Will only trigger on Linux
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        self.server_bind()
+        self.server_activate()
+
         self.blockchain = Blockchain()
         self.client = TCPClient(server_addr=server_address)  # Create the TCPClient to interact with other peers
         self.hardSync = True
@@ -162,7 +178,11 @@ class FullNode(socketserver.ThreadingTCPServer):
 
     @_requireSynced(not_synced_return_value=False)
     def validateTransaction(self, t: Transaction) -> bool:
-        """See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference."""
+        """Validate a transaction by comparing UTXO ins and outs.
+
+        See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference.
+        """
+        
         if not (any(t.senders)
                 and any(t.receivers)
                 and len(t.senders) == len(set(t.senders))):  # Check for duplicate inputs
@@ -188,14 +208,17 @@ class FullNode(socketserver.ThreadingTCPServer):
 
     @_requireSynced(not_synced_return_value=False)
     def validateNewBlock(self, newBlock: Block) -> bool:
-        """See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#validating-a-new-block for reference."""
+        """Validate a new block received from the network (block attributes and transactions are checked).
+
+        PoW: see https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#validating-a-new-block for reference.
+        """
         if ((len(self.blockchain.blockChain) and newBlock.height <= self.blockchain.currentHeight)
                 or newBlock.previousHash != self.blockchain.lastBlock.getHash()
                 or newBlock.timestamp - time.time() > 3600  # Prevent block from being too much in the future (1h max)
                 or newBlock.reward != self.computeReward()):
             return False
 
-        if self.isPoW(): # Check the new block hash according to consensus rules (number of zeroes and ones)
+        if self.isPoW(): # Check the new block hash according to PoW consensus rules (number of zeroes and ones)
             frac, whole = modf(self.consensusAlgorithm.blockDifficulty)
             whole = int(whole)
             if frac == 0:
@@ -204,12 +227,12 @@ class FullNode(socketserver.ThreadingTCPServer):
             elif frac == 0.5:
                 if newBlock.getHash()[0:whole + 1] != '0' * whole + '1' and newBlock.getHash()[0:whole + 1] != '0' * (whole + 1):
                     return False
-        elif self.isPoS(): # Check the new block nonce according to consensus rules
+        elif self.isPoS(): # Check the new block nonce according to PoS consensus rules
             to_hash = newBlock.previousHash.encode() + newBlock.miner.encode() + newBlock.nonce.to_bytes(8, 'big')
             if int.from_bytes(h.sha3_256(to_hash).digest(), 'big') > int(2**256 * self.blockchain.getBalance(newBlock.miner) * self.consensusAlgorithm.blockDifficulty):
                 return False
 
-        return all([self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction
+        return all([self.validateTransaction(t) for t in newBlock.transactionStore.transactions])  # Validate each transaction in the block
 
     def isNodeSynced(self) -> bool:
         return self.synced == SyncState.FULLY_SYNCED or self.synced == SyncState.ALREADY_SYNCED

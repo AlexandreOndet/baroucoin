@@ -1,3 +1,4 @@
+import logging
 import unittest
 import time
 from pathlib import Path
@@ -8,6 +9,7 @@ from app.Blockchain import *
 class FilesTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        logging.disable(logging.ERROR) # Silence expected error messages coming from tests
         cls.blockchain = Blockchain()
         cls.blockchain.createGenesisBlock()
         cls.json_filename = 'blockchain.json.temp' # Change file extension to prevent accidentaly messing with a real blockchain JSON file
@@ -17,10 +19,8 @@ class FilesTests(unittest.TestCase):
             cls.blockchain.addBlock(next(cls.block_generator))
         assert len(cls.blockchain.blockChain) == 21, f"Blockchain did not initialize correctly : expected 21 blocks got {len(cls.blockchain.blockChain)}"
 
-    '''
-        Verifies saving blockchain to JSON 
-    '''
     def test_blockchain_save_json(self):
+        """Verifies saving blockchain to JSON file."""
         self.assertTrue(self.blockchain.saveToJSON(self.json_filename, overwrite=True))
         self.assertTrue(Path(self.json_filename).is_file(), 
             f"File was not created : json_filename={self.json_filename}")
@@ -46,6 +46,7 @@ class FilesTests(unittest.TestCase):
                 f"Saved blockchain is not the same length as updated blockchain : updated={len(self.blockchain.blockChain)}, json={len(json_data['blocks'])}")
 
     def test_blockchain_save_json_to_folder(self):
+        """Verifies saving blockchain to JSON file in folder."""
         self.assertTrue(self.blockchain.saveToJSON("sub/folder/" + self.json_filename, overwrite=True))
         Path("sub/folder/" + self.json_filename).unlink()
         Path("sub/folder").rmdir()
@@ -74,6 +75,7 @@ class FilesTests(unittest.TestCase):
             f"File did not update with overwrite=True")
 
     def test_blockchain_load_json(self):
+        """Verifies loading blockchain from JSON file."""
         copy = Blockchain()
         copy.createGenesisBlock()
 
@@ -84,7 +86,7 @@ class FilesTests(unittest.TestCase):
             f"Should not load non-existing file '{non_existing_file}' : is_file={Path(non_existing_file).is_file()}")
         
         self.assertTrue(self.blockchain.saveToJSON(self.json_filename, overwrite=True))
-        self.assertTrue(copy.loadFromJSON(self.json_filename))
+        self.assertTrue(copy.loadFromJSON(self.json_filename, overwrite=True)) # Force load
         self.assertEqual(len(copy.blockChain), len(self.blockchain.blockChain),
             f"'copy' blockchain length is not the same as original : copy={len(copy.blockChain)}, original={len(self.blockchain.blockChain)}")
 
@@ -99,9 +101,6 @@ class FilesTests(unittest.TestCase):
         divergent_index = self._check_blockchain_equality(copy, self.blockchain)
         self.assertLess(divergent_index, len(copy.blockChain),
             f"'copy' blockchain should be longer than original : divergent_index={divergent_index}, copy={len(copy.blockChain)}")
-
-        self.assertTrue(copy.loadFromJSON(self.json_filename, overwrite=True), # Force load
-            f"File did not get loaded with overwrite=True")
 
     def tearDown(self):
         Path(self.json_filename).unlink(missing_ok=True) # Delete file after each test
@@ -123,8 +122,8 @@ class FilesTests(unittest.TestCase):
             lastBlock = block
 
     def _check_blockchain_equality(self, a : Blockchain, b : Blockchain) -> int:
-        """
-        Returns index of deviation (block different in the two blockchains).
+        """Returns the index of the first different block between two blockchains.
+        
         Equal => i == len(chain_a) == len(chain_b) 
         Not Equal => i == 0 or i == index of divergent block 
         """

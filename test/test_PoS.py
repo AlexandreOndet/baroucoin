@@ -60,14 +60,14 @@ class PoSTests(unittest.TestCase):
         w_alice.balance = 2
 
         node_alice = FullNode(consensusAlgorithm=True, existing_wallet=w_alice)
-        block = node_alice.createNewBlock()
         node_alice.blockchain.blockChain[0] = blockchain.blockChain[0]
+        block = node_alice.createNewBlock()
         if node_alice.consensusAlgorithm.mine(block):
             node_alice.blockchain.addBlock(block)
 
         node_bob = FullNode(consensusAlgorithm=True, existing_wallet=w_bob)
         node_bob.blockchain.blockChain[0] = blockchain.blockChain[0]
-        
+
         self.assertTrue(node_bob.validateNewBlock(node_alice.blockchain.lastBlock), f"Bob could not validate Alice's new block")
 
 if __name__ == '__main__':
