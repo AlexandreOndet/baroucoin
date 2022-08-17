@@ -26,6 +26,11 @@ class ChartsRenderer():
         self.previous_mining_epoch_rate = 0
         self.previous_mining_time_rate = 0
 
+    def filter(self, record):
+        """Peers log event filter used to extract information from the simulation."""
+        self.log("info", record.getMessage())
+        return True
+
     def log(self, level: str, msg: str):
         self.log_title = self.log_title.markdown("### Log")
         if "success" in msg:
@@ -42,9 +47,7 @@ class ChartsRenderer():
 
         :param data: a dict containing the simulation's starting parameters and current peers.
         """
-        
-        # Keep only synced nodes for updating data
-        nodes = [n for n in data['nodes'] if n.isNodeSynced()]
+        nodes = data['nodes']
         self._updateData(nodes)
 
         # Charts
@@ -97,10 +100,12 @@ class ChartsRenderer():
         )
 
     def _get_peers_balance_chart(self):
-        return alt.Chart(self.df_nodes).mark_bar().encode(
-            x=alt.X('nodeId:N'),
-            y=alt.Y('max(balance):Q', axis=alt.Axis(tickMinStep=1)),
-            color=alt.Color('nodeId:N', legend=alt.Legend()),
+        return alt.Chart(self.df_nodes).mark_bar().transform_filter(
+            alt.datum.epoch == self.epoch
+        ).encode(
+            x=alt.X('balance:Q', axis=alt.Axis(tickMinStep=1)),
+            y=alt.Y('nodeId:N'),
+            color=alt.Color('nodeId:N', legend=None),
         ).properties(
             title="Live peers balances",
             width=700,

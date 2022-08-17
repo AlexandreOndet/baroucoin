@@ -83,14 +83,21 @@ if __name__ == "__main__":
     # Simulation parameters
     consensus_input = inputs_container.selectbox("Consensus algorithm", ("PoW (Proof-Of-Work)", "PoS (Proof-Of-Stake)"))
     max_nodes_input = inputs_container.number_input("Maximum number of nodes", 2, 10, value=5)
-    starting_nodes_input = inputs_container.number_input("Number of starting nodes", 1, int(max_nodes_input), value=3)
+    starting_nodes_input = inputs_container.number_input("Number of starting nodes", 2, int(max_nodes_input), value=3)
     epoch_time_input = inputs_container.number_input("Epoch duration (in milliseconds)", 100, 1000*60*60, value=1000, step=100)
-    mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0., 10000., value=5., step=0.5)
+    if consensus_input[:3] == "PoW":
+        mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0., 15., value=5., step=0.5)
+    elif consensus_input[:3] == "PoS":
+        mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0, 10_000_000, value=100_000, step=1)
 
     # Random events parameters
-    transaction_frequency_input = inputs_container.slider("Transaction frequency", 0., 1., value=.5, format="%f")
-    disconnect_frequency_input = inputs_container.slider("Disconnect frequency", 0., 1., value=.1, format="%f")
-    new_peer_frequency_input = inputs_container.slider("New peer frequency", 0., 1., value=.2, format="%f")
+    transaction_frequency_input = inputs_container.slider("Transaction frequency", 0., 1., value=.3, format="%f")
+    disconnect_frequency_input = inputs_container.slider("Disconnect frequency", 0., 1., value=.01, format="%f")
+    new_peer_frequency_input = inputs_container.slider("New peer frequency", 0., 1., value=.02, format="%f")
+
+    # Tokenomics parameters
+    initial_supply_input = inputs_container.number_input("Initial coin supply", 1, 2**32, value=100_000, step=1)
+    initial_transfer_amount_input = inputs_container.number_input("Initial balance of starting nodes", 1, 2**32, value=50, step=1)
 
     start_btn_container = st.empty()
     start_btn = start_btn_container.button("Start simulation", key='1')
@@ -99,6 +106,9 @@ if __name__ == "__main__":
         start_btn = start_btn_container.button("Start simulation", key='2', disabled=True)
 
         renderer = ChartsRenderer()
+        # Makes all log messages pass through the renderer log filter for extracting informations
+        #file_handler.addFilter(renderer.filter)
+
         simulation = Orchestrator(renderer=renderer)
         simulation.setup(
             starting_nodes_input,
@@ -108,7 +118,9 @@ if __name__ == "__main__":
             transaction_frequency_input,
             disconnect_frequency_input,
             new_peer_frequency_input,
-            consensus_input[:3]
+            consensus_input[:3],
+            initial_supply_input,
+            initial_transfer_amount_input
         )
 
         t = Thread(target=handle_input)
@@ -123,3 +135,4 @@ if __name__ == "__main__":
         t.start()
 
         simulation.join()
+        st.markdown("# Reload the page to start a new simulation")

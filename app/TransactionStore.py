@@ -1,6 +1,8 @@
 from __future__ import annotations # Allows for using class type hinting within class (see https://stackoverflow.com/a/33533514)
 from app.Transaction import *
 
+import json
+
 class TransactionStore(dict):
     """Stores all transactions within a block."""
     def __init__(self, transactions: list(Transaction) = None):
@@ -13,9 +15,13 @@ class TransactionStore(dict):
     def __repr__(self):
         return str(self.transactions)
 
+    @property
+    def isEmpty(self):
+        return len(self.transactions) > 0
+
     def addTransaction(self, transaction: Transaction):
         self.transactions.append(transaction)
-
+    
     @classmethod
-    def fromJSON(cls, store: dict) -> TransactionStore:
-        return cls(**store)
+    def fromJSON(cls, store: list) -> TransactionStore:
+        return cls(transactions=[Transaction.fromJSON(json.loads(t)) for t in store])

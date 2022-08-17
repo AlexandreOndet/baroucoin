@@ -114,11 +114,16 @@ class FullNode(socketserver.ThreadingTCPServer):
         self.isMining = True
         while self.isMining:
             new_block = self.createNewBlock()
-            found = self.consensusAlgorithm.mine(new_block)
-            if found:
-                self.blockchain.addBlock(new_block)
-                self.updateBalance()
-                self.client.broadcast({"newBlock": new_block.toJSON()})
+            try:
+                found = self.consensusAlgorithm.mine(new_block)
+                if found:
+                    # Clear transaction pool even if block gets later invalidated by the network (transactions will be lost in this block)
+                    self.transaction_pool = []
+                    self.blockchain.addBlock(new_block)
+                    self.updateBalance()
+                    self.client.broadcast({"newBlock": new_block.toJSON()})
+            except ValueError: # Raised for PoS when node balance is insufficient 
+                self.isMining = False
 
     @property
     def id(self) -> str:
@@ -131,6 +136,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         return type(self.consensusAlgorithm).__name__ == "ProofOfStake"
 
     def addToTransactionPool(self, t: Transaction):
+        """Add a transaction to the transaction pool that will be picked up on the next block creation from this node (no update on the current mined block)."""
         self.transaction_pool.append(t)
 
     def removeFromTransactionPool(self, t: Transaction):
@@ -154,7 +160,10 @@ class FullNode(socketserver.ThreadingTCPServer):
         return 1 # TODO : Compute reward, maybe according to consensus algorithm or external rules ?
 
     def updateBalance(self):
+        """Update the node's balance and starts mining if PoS and node is not already mining."""
         self.wallet.balance = self.blockchain.getBalance(self.wallet.address)
+        if self.isPoS() and not self.isMining:
+            self.startMining()
 
     @_requireSynced()
     def startMining(self):
@@ -177,31 +186,21 @@ class FullNode(socketserver.ThreadingTCPServer):
             self.miningThread.join() # Wait for mining thread to end
 
     @_requireSynced(not_synced_return_value=False)
-    def validateTransaction(self, t: Transaction) -> bool:
+    def validateTransaction(self, check_t: Transaction) -> bool:
         """Validate a transaction by comparing UTXO ins and outs.
 
         See https://github.com/bitcoinbook/bitcoinbook/blob/develop/ch10.asciidoc#independent-verification-of-transactions for reference.
         """
         
-        if not (any(t.senders)
-                and any(t.receivers)
-                and len(t.senders) == len(set(t.senders))):  # Check for duplicate inputs
+        if not (any(check_t.senders)
+                and any(check_t.receivers)
+                and len(check_t.senders) == len(set(check_t.senders))):  # Check for duplicate inputs
             return False
 
-        for (addr, amount) in t.senders:
-            exists = False
-            validAmount = False
-            spent = False
-            for block in self.blockchain.blockChain:
-                for k in block.transactionStore.transactions:
-                    for (r_addr, r_amount) in k.receivers:
-                        if addr == r_addr:
-                            exists = True
-                        if amount == r_amount:
-                            validAmount = True
-                    if addr in [s_addr for (s_addr, _) in k.senders]:
-                        spent = True
-            if not exists or spent or not validAmount:
+        for (addr, amount) in check_t.senders:
+            # getBalance() will traverse the entire blockchain for checking the transactions (see implementation in Blockchain.py) 
+            sender_balance = self.blockchain.getBalance(addr)
+            if amount > sender_balance:
                 return False
 
         return True
@@ -324,6 +323,7 @@ class FullNode(socketserver.ThreadingTCPServer):
 
         if (self.hardSync): # Reset blockchain state in case of hard sync
             self.blockchain.blockChain = []
+            self.blockchain.createGenesisBlock()
 
         # Getting peer with highest returned block height and storing both the address and block height received for checking in updateInventory request
         self.chosen_peer = max(self.syncBlockHeightReceivedFromPeer, key=self.syncBlockHeightReceivedFromPeer.get)
@@ -368,8 +368,8 @@ class FullNode(socketserver.ThreadingTCPServer):
         """Update the node's blockchain for blocks received by a chosen peer."""
         if (client_addr == self.chosen_peer): # Peer verification
             blocks = data
-            required_blocks = self.sync_height - self.blockchain.currentHeight
-            if (len(blocks) == required_blocks): # Ignore block requirements for hard sync
+            required_blocks = self.sync_height - self.blockchain.currentHeight + 1 # +1 for height index offset
+            if (len(blocks) == required_blocks):
                 original_chain = [b for b in self.blockchain.blockChain]
                 for json_block in [json.loads(b) for b in blocks]:
                     json_block['transactionStore'] = TransactionStore.fromJSON(json_block['transactionStore'])
@@ -425,6 +425,7 @@ class FullNode(socketserver.ThreadingTCPServer):
         data = json.loads(data)
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
         block = Block.fromJSON(data)
+        self._log(logging.debug, f"Received 'newBlock' request from {client_addr} with data : {data}")
         if (self.validateNewBlock(block)):
             self.consensusAlgorithm.stopMining() # Stop mining for this block and start mining next one
             self.blockchain.addBlock(block)

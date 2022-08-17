@@ -6,6 +6,7 @@ from app.TCPClient import *
 
 class NetworkTests(unittest.TestCase):
     def _decode_payload(self, raw_data: bytes) -> dict:
+        """Helper function to decode the base64 encoded JSON payload (see TCPClient:_encapsulateMsg for details)."""
         json_payload = json.loads(raw_data.decode('utf-8').split('|')[0])
         return json.loads(base64.b64decode(json_payload['msg']).decode('utf-8'))
 

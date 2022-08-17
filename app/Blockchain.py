@@ -18,21 +18,22 @@ class Blockchain:
     def __repr__(self):
         return str(self.blockChain)
 
-    def createGenesisBlock(self, consensus: bool=False, beneficiaries: list=[], initial_supply=100_000):
+    def createGenesisBlock(self, consensus: bool=False, beneficiaries: list=[], initial_supply=100_000, initial_beneficiary_amount=100):
         """Set up the first block in the blockchain.
 
         :param consensus: indicates the consensus used for the first block
-        :param beneficiaries: a list of addresses who will receive 1 coin in a transaction from the first block (useful for starting a PoS blockchain)
+        :param beneficiaries: a list of addresses who will receive coins in a transaction from the first block (useful for starting a PoS blockchain)
         :param initial_supply: the amount of coins created on the first block mined
+        :param initial_beneficiary_amount: the amount of coins sent to the beneficiaries initially
         """
 
-        if len(beneficiaries) > initial_supply:
-            raise ValueError("Number of beneficiaries cannot exceed total initial supply")
+        if len(beneficiaries)*initial_beneficiary_amount > initial_supply:
+            raise ValueError("Number of beneficiaries cannot exceed total initial supply regarding the initial transfer amount")
 
         genesisBlock = Block(time.time(), TransactionStore(), 0, consensus, "0", "0", initial_supply)
 
         for address in beneficiaries:
-            genesisBlock.transactionStore.addTransaction(Transaction(senders=[("0", 1)], receivers=[(address, 1)]))
+            genesisBlock.transactionStore.addTransaction(Transaction(senders=[("0", initial_beneficiary_amount)], receivers=[(address, initial_beneficiary_amount)]))
         
         self.addBlock(genesisBlock)
 

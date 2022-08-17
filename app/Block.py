@@ -29,10 +29,10 @@ class Block:
         self.nonce = nonce
     
     def __str__(self):
-        return json.dumps(self.__dict__, sort_keys=True)
+        return self.toJSON()
 
     def __repr__(self):
-        return json.dumps(self.__dict__, sort_keys=True)
+        return self.toJSON()
 
     def __eq__(self, other):
         return self.getHash() == other.getHash()
@@ -41,7 +41,10 @@ class Block:
         return h.sha3_256(self.toJSON().encode()).hexdigest()
 
     def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True)
+        _json = json.loads(json.dumps(self, default=lambda o: o.__dict__, sort_keys=True))
+        _json['transactionStore'] = [t.toJSON() for t in self.transactionStore.transactions] if self.transactionStore.isEmpty else []
+
+        return json.dumps(_json)
 
     @classmethod
     def fromJSON(cls, block: dict) -> Block:

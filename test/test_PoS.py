@@ -34,13 +34,13 @@ class PoSTests(unittest.TestCase):
         w_bob = Wallet("Bob")
         
         blockchain = Blockchain()
-        blockchain.createGenesisBlock(True, beneficiaries=[w_alice.address, w_alice.address]) # Alice's wallet gets two coins at the start
-        w_alice.balance = 2
+        blockchain.createGenesisBlock(True, beneficiaries=[w_alice.address]) # Alice's wallet gets a hundred coins at the start
+        w_alice.balance = 100
 
-        t = Transaction(senders=[(w_alice.address, 2)], receivers=[(w_bob.address, 2)]) # Send two coins to Bob
+        t = Transaction(senders=[(w_alice.address, 100)], receivers=[(w_bob.address, 100)]) # Send a hundred coins to Bob
         b = Block(timestamp=time.time(), transactionStore=TransactionStore([t]), height=1,
-                  consensusAlgorithm=True, previousHash=blockchain.lastBlock.getHash(), miner=w_alice.address, reward=100) # Alice gets 100 coins as mining reward
-        
+                  consensusAlgorithm=True, previousHash=blockchain.lastBlock.getHash(), miner=w_alice.address, reward=100) # Alice gets 100 coins plus as mining reward
+
         PoS = ProofOfStake(10, w_alice)
         if PoS.mine(b):
             blockchain.addBlock(b)
@@ -49,7 +49,7 @@ class PoSTests(unittest.TestCase):
         w_bob.balance = blockchain.getBalance(w_bob.address)
         
         self.assertEqual(w_alice.balance, 100, f"Wrong balance for Alice: expected 100 got {w_alice.balance} coins")
-        self.assertEqual(w_bob.balance, 2, f"Wrong balance for Bob: expected 2 got {w_bob.balance} coins")
+        self.assertEqual(w_bob.balance, 100, f"Wrong balance for Bob: expected 2 got {w_bob.balance} coins")
 
     def test_block_validation(self):
         w_alice = Wallet("Alice")
