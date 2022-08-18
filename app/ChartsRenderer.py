@@ -11,6 +11,10 @@ class ChartsRenderer():
         super(ChartsRenderer, self).__init__()
         self.df_nodes = pd.DataFrame(columns=['nodeId', 'height', 'balance', 'epoch'])
         self.epoch = 0
+
+        self.numberOfForks = 0
+        self.fork_tracker = {} # Maps a block height to its miner
+        self.forkedNodes = [] # Keeps track of nodes in a forked state
         
         self.chart_title = st
         self.height_chart_display = st
@@ -28,7 +32,33 @@ class ChartsRenderer():
 
     def filter(self, record):
         """Peers log event filter used to extract information from the simulation."""
-        self.log("info", record.getMessage())
+        def extract_from_key(msg: str, key: str):
+            """Extract a value from a JSON string in log message (doesn't work for last key element)."""
+            key_index = msg.index("'" + key + "':")
+            return msg[key_index + len(key) + 4 : msg.index(',', key_index)]
+
+        def get_node_id(msg: str):
+            return msg[msg.index(':[') + 2 : msg.index(':[') + 8] # Node id is always 6 characters long
+
+        msg = record.getMessage()
+
+        # Track forks by looking at the height and miner of newly validated blocks and comparing to first miner who found it
+        if "Received 'newBlock'" in msg:
+            node_id = get_node_id(msg)
+            msg_height = extract_from_key(msg, "height")
+            msg_miner = extract_from_key(msg, "miner")
+
+            if not node_id in self.forkedNodes:
+                if msg_height in self.fork_tracker and msg_miner != self.fork_tracker[msg_height]:
+                    self.forkedNodes.append(node_id)
+                    self.numberOfForks += 1
+                else:
+                    self.fork_tracker[msg_height] = msg_miner
+        elif "Finished sync" in msg:
+            node_id = get_node_id(msg)
+            if node_id in self.forkedNodes:
+                self.forkedNodes.remove(node_id) # Node is now in sync with main chain
+
         return True
 
     def log(self, level: str, msg: str):
@@ -63,6 +93,7 @@ class ChartsRenderer():
         
         live_data_text = "Connected peers: " + " | ".join([n.id for n in nodes]) + f" ({len(nodes)}/{data['maxNodes']} nodes)\n"
         live_data_text += "Mining difficulty: " + str(data['miningDifficulty']) + "\n"
+        live_data_text += "Number of forks recorded: " + str(self.numberOfForks) + "\n"
         self.live_data_display = self.live_data_display.text(live_data_text)
 
         # Metrics

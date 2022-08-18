@@ -15,10 +15,6 @@ class TransactionStore(dict):
     def __repr__(self):
         return str(self.transactions)
 
-    @property
-    def isEmpty(self):
-        return len(self.transactions) > 0
-
     def addTransaction(self, transaction: Transaction):
         self.transactions.append(transaction)
     

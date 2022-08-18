@@ -371,12 +371,12 @@ class FullNode(socketserver.ThreadingTCPServer):
             required_blocks = self.sync_height - self.blockchain.currentHeight + 1 # +1 for height index offset
             if (len(blocks) == required_blocks):
                 original_chain = [b for b in self.blockchain.blockChain]
+                if self.hardSync:
+                    self.blockchain.blockChain = []
+                    
                 for json_block in [json.loads(b) for b in blocks]:
                     json_block['transactionStore'] = TransactionStore.fromJSON(json_block['transactionStore'])
                     block = Block.fromJSON(json_block)
-
-                    if block.height == 0: # Ignore origin block as it's common for all nodes
-                        continue
 
                     """Skip blockchain validation allowing for dynamic difficulty change and faster node syncying (not the best way...)."""
                     # if not(self.validateNewBlock(block)):
@@ -425,15 +425,16 @@ class FullNode(socketserver.ThreadingTCPServer):
         data = json.loads(data)
         data['transactionStore'] = TransactionStore.fromJSON(data['transactionStore']);
         block = Block.fromJSON(data)
-        self._log(logging.debug, f"Received 'newBlock' request from {client_addr} with data : {data}")
+        peer = self.peers_server[client_addr]
+        self._log(logging.debug, f"Received 'newBlock' request from {peer} with data : {data}")
         if (self.validateNewBlock(block)):
             self.consensusAlgorithm.stopMining() # Stop mining for this block and start mining next one
             self.blockchain.addBlock(block)
-            self._log(logging.info, f"Validated block #{block.height} (hash: {block.getHash()}) [success]")
+            self._log(logging.info, f"Validated block #{block.height} from {peer} (hash: {block.getHash()}) [success]")
             self.updateBalance()
         else:
             self._log(logging.warning,
-                      f"Block #{block.height} invalid: hash={block.getHash()}, currentHeight={self.blockchain.currentHeight}")
+                      f"Block #{block.height} from {peer} is invalid: hash={block.getHash()}, currentHeight={self.blockchain.currentHeight}")
         return True
 
     def RPC_end(self, data, client_addr) -> bool:
@@ -441,7 +442,5 @@ class FullNode(socketserver.ThreadingTCPServer):
         server_address = tuple(data['server_address'])
         self._log(logging.debug, f"Received disconnect request from {server_address}")
         self.client.disconnect(server_address, True)  # Disconnects and remove the peer from the peers list
-        if (client_addr in self.peers_server):
-            del self.peers_server[client_addr]
 
         return False

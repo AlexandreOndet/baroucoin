@@ -1,7 +1,7 @@
 import logging
 from dotenv import load_dotenv
 from pathlib import Path
-from streamlit.scriptrunner import add_script_run_ctx
+from streamlit.runtime.scriptrunner.script_run_context import add_script_run_ctx
 from threading import Thread
 
 from app.ChartsRenderer import *
@@ -11,26 +11,17 @@ load_dotenv()
 app_dir = Path(__file__).parent
 
 def handle_input():
-    """Handles the console input for the simulation (commands are case-insensitive).
-
-    The commands are:
-    - 'q/Q': Quit the simulation
-    - 'a/A': Add a new peer (up to the maximum peer capacity of the simulation)
-    - 'd/D': Remove the last added peer from the simulation (can be added back with a/A)
-    - 's/S': Synchronize all peers to the highest blockchain
-    - '+': Increase mining difficulty
-    - '-': Decrease mining difficulty
-    """
+    """Handles the console input for the simulation (commands are case-insensitive)."""
 
     st.markdown("### Usage\n"
         "Run the commands in the console (press a key then <kbd>ENTER</kbd>).\n\n"
         "Availables commands (case insensitive):\n"
         "- <kbd>q</kbd> Quit the simulation\n"
         "- <kbd>a</kbd> Add a new peer (up to the maximum peer capacity of the simulation)\n"
-        "- <kbd>r</kbd> Remove the last added peer from the simulation (can be added back with a/A)\n"
+        "- <kbd>r</kbd> Remove the last added peer from the simulation\n"
         "- <kbd>s</kbd> Synchronize all peers to the highest blockchain\n"
-        "- <kbd>+</kbd> Increase mining difficulty\n"
-        "- <kbd>-</kbd> Decrease mining difficulty\n", 
+        "- <kbd>+</kbd> Increase mining difficulty (allow character repetition for multiple increase)\n"
+        "- <kbd>-</kbd> Decrease mining difficulty (allow character repetition for multiple decrease)\n", 
         unsafe_allow_html=True
     )
 
@@ -49,13 +40,12 @@ def handle_input():
                 simulation.removeLastNode()
             elif (user_input.lower() == 's'):
                 simulation.syncAllNodes()
-            elif (user_input.lower() == '+'):
-                simulation.increaseDifficulty()
-            elif (user_input.lower() == '-'):
-                simulation.decreaseDifficulty()
+            elif (user_input.lower().startswith('+')):
+                simulation.increaseDifficulty(multiplier=len(user_input))
+            elif (user_input.lower().startswith('-')):
+                simulation.decreaseDifficulty(multiplier=len(user_input))
 
     simulation.stop()
-
 
 if __name__ == "__main__":
     # logging.disable(logging.INFO) # Use this to disable debug and print infos
@@ -88,7 +78,7 @@ if __name__ == "__main__":
     if consensus_input[:3] == "PoW":
         mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0., 15., value=5., step=0.5)
     elif consensus_input[:3] == "PoS":
-        mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0, 10_000_000, value=100_000, step=1)
+        mining_difficulty_input = inputs_container.number_input("Mining difficulty", 0, 10_000_000, value=20_000, step=1)
 
     # Random events parameters
     transaction_frequency_input = inputs_container.slider("Transaction frequency", 0., 1., value=.3, format="%f")
@@ -107,7 +97,7 @@ if __name__ == "__main__":
 
         renderer = ChartsRenderer()
         # Makes all log messages pass through the renderer log filter for extracting informations
-        #file_handler.addFilter(renderer.filter)
+        file_handler.addFilter(renderer.filter)
 
         simulation = Orchestrator(renderer=renderer)
         simulation.setup(

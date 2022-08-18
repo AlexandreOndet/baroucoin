@@ -42,7 +42,7 @@ class Block:
 
     def toJSON(self):
         _json = json.loads(json.dumps(self, default=lambda o: o.__dict__, sort_keys=True))
-        _json['transactionStore'] = [t.toJSON() for t in self.transactionStore.transactions] if self.transactionStore.isEmpty else []
+        _json['transactionStore'] = [t.toJSON() for t in self.transactionStore.transactions] if self.transactionStore != [] else []
 
         return json.dumps(_json)
 

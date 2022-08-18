@@ -15,6 +15,8 @@ class Orchestrator(Thread):
     - maxNodes: maximum numbers of peers allowed
     - epochTime: speed of the simulations for triggering events
     - miningDifficulty: float value in 0.5 increments representing the mining difficulty for PoW
+    - initialSupply: amount of coins minted in the first block (miner is address 0x0)
+    - initialTransferAmount: amount of coins sent initially to the starting nodes
 
     Random events:
     - transactionFrequency: chances for a transaction to be sent to a random peer
@@ -98,6 +100,9 @@ class Orchestrator(Thread):
 
     @_pause
     def _updateDifficulty(self):
+        if self.miningDifficulty < 0:
+            self.miningDifficulty = 0
+
         for node in self.nodes:
             node.stopMining()
 
@@ -254,10 +259,10 @@ class Orchestrator(Thread):
 
         self._log(logging.info, "Syncing finished [success]")
 
-    def increaseDifficulty(self):
-        self.miningDifficulty += 0.5 * (1000 if self.isPos() else 1)
+    def increaseDifficulty(self, multiplier=1):
+        self.miningDifficulty += 0.5 * (1000 if self.isPos() else 1) * multiplier
         self._updateDifficulty()
 
-    def decreaseDifficulty(self):
-        self.miningDifficulty -= 0.5 * (1000 if self.isPos() else 1)
+    def decreaseDifficulty(self, multiplier=1):
+        self.miningDifficulty -= 0.5 * (1000 if self.isPos() else 1) * multiplier
         self._updateDifficulty()
