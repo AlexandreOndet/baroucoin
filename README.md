@@ -16,18 +16,15 @@ Une implémentation d'une chaine de blocs visant à comparer preuve de travail e
 - [x] Calcul de la récompense de bloc
 - [x] Actualisation dynamique de la difficulté par les pairs
 ### Amélioration du code
-- [ ] Remplacer le booléen 'consensusAlgorithm' pour être plus explicite (énumération ?)
 - [x] Documentation des tests
 - [x] Documentation des classes
 - [x] Documentation des fonctions
 
 # Fonctionnement
-Cloner le repo Github
-`git clone `
-et effectuer les commands depuis la racine du dossier (`baroucoin/`).
+Cloner le repo Github `git clone` et effectuer les commandes depuis la racine du dossier (baroucoin/).
 
 ## Lancement de la simulation et visualisation des graphes
-Démarrer le serveur web Streamlit dans un terminal via `run.bat` ou `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
+Démarrer le serveur web Streamlit dans un terminal via `run.bat` (Windows), `run.sh` (Linux) ou `python -m streamlit run app\main.py`. Le navigateur s'ouvrira automatiquement ou naviguer à l'adresse `http://localhost:8501/` puis cliquer sur le bouton pour lancer la simulation !
 
 ### Bad message format
 ![bad_message_format error](bad_message_format_error.png)
