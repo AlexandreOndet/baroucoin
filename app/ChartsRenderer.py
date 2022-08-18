@@ -1,5 +1,6 @@
 import altair as alt
 import pandas as pd
+import psutil
 import streamlit as st
 from typing import Tuple
 
@@ -28,7 +29,8 @@ class ChartsRenderer():
 
         self.metrics_container = st
         self.previous_mining_epoch_rate = 0
-        self.previous_mining_time_rate = 0
+        self.previous_cpu_usage = 0.
+        self.total_cpu_usage = 0.
 
     def filter(self, record):
         """Peers log event filter used to extract information from the simulation."""
@@ -88,8 +90,8 @@ class ChartsRenderer():
         # Live data text
         self.live_data_title = self.live_data_title.markdown("### Live data")
         
-        (mining_epoch_rate, mining_time_rate) = self._get_block_mining_rate(data['epochTime'])
-        (mining_epoch_rate, mining_time_rate) = (round(mining_epoch_rate, 2), round(mining_time_rate, 2))
+        mining_epoch_rate = self._get_block_mining_rate()
+        mining_epoch_rate = round(mining_epoch_rate, 2)
         
         live_data_text = "Connected peers: " + " | ".join([n.id for n in nodes]) + f" ({len(nodes)}/{data['maxNodes']} nodes)\n"
         live_data_text += "Mining difficulty: " + str(data['miningDifficulty']) + "\n"
@@ -101,23 +103,24 @@ class ChartsRenderer():
             self.metrics_container = self.metrics_container.columns(2)
 
         self.metrics_container[0] = self.metrics_container[0].metric(
-            "Average blocks per second", 
-            mining_time_rate, 
-            delta=round(mining_time_rate - self.previous_mining_time_rate, 2), 
-        )
-        self.previous_mining_time_rate = mining_time_rate
-
-        self.metrics_container[1] = self.metrics_container[1].metric(
             "Average blocks per epoch", 
             mining_epoch_rate, 
             delta=round(mining_epoch_rate - self.previous_mining_epoch_rate, 2), 
         )
         self.previous_mining_epoch_rate = mining_epoch_rate
 
-    def _get_block_mining_rate(self, epochTime: int) -> Tuple[float, float]:
+        self.total_cpu_usage += psutil.cpu_percent()
+        self.metrics_container[1] = self.metrics_container[1].metric(
+            "Average CPU usage", 
+            round(self.total_cpu_usage / self.epoch, 2), 
+            delta=round((self.total_cpu_usage / self.epoch) - (self.previous_cpu_usage / (self.epoch - 1)) if self.epoch > 1 else 0 , 2), 
+        )
+        self.previous_cpu_usage = self.total_cpu_usage
+
+    def _get_block_mining_rate(self) -> Tuple[float, float]:
         """Returns the average number of blocks mined per epoch and per seconds."""
         max_height = self.df_nodes[self.df_nodes.epoch == self.epoch]['height'].max()
-        return (max_height/self.epoch, epochTime * max_height/self.epoch/1000)
+        return max_height/self.epoch
 
     def _get_blockchain_height_chart(self):
         return alt.Chart(self.df_nodes).mark_line().encode(
