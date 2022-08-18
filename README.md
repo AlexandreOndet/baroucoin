@@ -31,7 +31,7 @@ Démarrer le serveur web Streamlit dans un terminal via `run.bat` (Windows), `ru
 
 Si une erreur de ce type survient au lancement, simplement quitter la simulation ('q' dans le terminal), fermer la boîte de dialogue et rafraîchir la page (erreur interne de Streamlit).
 
-# Lancement du serveur
+## Lancement du serveur
 Pour initialiser le serveur (jouant un rôle de DNS central pour simplifier la découvertes des noeuds du réseau), nous utilisons Docker.
 
 En premier lieu, construire l'image :
@@ -45,6 +45,8 @@ Ensuite, lancer le conteneur avec l'image correspondante :
 ```
 docker run -v $(pwd):/server -p 80:80 barouchain_server
 ```
+## Lancements des tests
+`run.bat test` (Windows), `run.sh test` (Linux) ou `python -m unittest test.test_XXX` pour faire tourner un test particulier.
 
 # Participants
 Ce projet est réalisé par :
